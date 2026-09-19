@@ -1,7 +1,8 @@
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import { PreviewPane } from "./nle/PreviewPane";
 import { TimelinePane } from "./nle/TimelinePane";
 import { PreviewOverlays } from "./nle/PreviewOverlays";
+import { usePreviewReadOnlyStore } from "./editor/previewReadOnlyStore";
 import {
   useTimelineEditCallbacks,
   type TimelineEditCallbackDeps,
@@ -66,6 +67,10 @@ export interface EditorShellProps extends TimelineEditCallbackDeps {
   recordingState?: GestureRecordingState;
   onToggleRecording?: () => void;
   gestureOverlay?: ReactNode;
+  /** Clicks still select and report; the preview cannot move, edit or delete anything. */
+  readOnlyPreview?: boolean;
+  /** Short text shown on disabled hand-edit controls while `readOnlyPreview` is set. */
+  readOnlyPreviewReason?: string;
 }
 
 // The CapCut-style shell: [left | preview | right] in a top row, with a
@@ -107,7 +112,14 @@ export function EditorShell({
   onToggleRecording,
   blockPreview,
   gestureOverlay,
+  readOnlyPreview = false,
+  readOnlyPreviewReason,
 }: EditorShellProps) {
+  // eslint-disable-next-line no-restricted-syntax
+  useEffect(() => {
+    usePreviewReadOnlyStore.getState().setReadOnly(readOnlyPreview, readOnlyPreviewReason);
+    return () => usePreviewReadOnlyStore.getState().setReadOnly(false);
+  }, [readOnlyPreview, readOnlyPreviewReason]);
   const { projectId, activeCompPath, setActiveCompPath, handlePreviewIframeRef, showToast } =
     useStudioShellContext();
   const { refreshKey, captionEditMode, refreshPreviewDocumentVersion, timelineElements } =
