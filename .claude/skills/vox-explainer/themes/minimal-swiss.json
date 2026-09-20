@@ -1,0 +1,21 @@
+{
+  "name": "minimal-swiss",
+  "displayName": "现代极简瑞士平面排版风",
+  "colors": {
+    "paper": "#F8F9FA",
+    "paper-deep": "#EDEFEF",
+    "paper-shadow": "#E2E4E6",
+    "ink": "#0F172A",
+    "ink-soft": "#64748B",
+    "rule": "#CBD5E1",
+    "accent": "#2563EB",
+    "signal": "#DC2626",
+    "marker": "#F59E0B"
+  },
+  "dark": false,
+  "defaultScribbleColor": "#DC2626",
+  "borders": {
+    "heavy": "3px solid #0F172A",
+    "light": "1px solid #CBD5E1"
+  }
+}

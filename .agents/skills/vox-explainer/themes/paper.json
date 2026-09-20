@@ -1,0 +1,21 @@
+{
+  "name": "paper",
+  "displayName": "经典牛皮纸报刊风（默认）",
+  "colors": {
+    "paper": "#F1EDE4",
+    "paper-deep": "#E3DCCC",
+    "paper-shadow": "#DED6C4",
+    "ink": "#121212",
+    "ink-soft": "#514C44",
+    "rule": "#C9C2B4",
+    "accent": "#1D4ED8",
+    "signal": "#E23A2E",
+    "marker": "#FFD400"
+  },
+  "dark": false,
+  "defaultScribbleColor": "#E23A2E",
+  "borders": {
+    "heavy": "3px solid #121212",
+    "light": "1px solid #C9C2B4"
+  }
+}

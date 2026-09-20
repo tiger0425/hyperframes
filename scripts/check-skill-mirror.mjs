@@ -6,13 +6,15 @@
 // or one CLI will silently ship a stale skill. This check enforces that
 // invariant at CI time.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readdirSync, readFileSync, statSync, copyFileSync, mkdirSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { createHash } from "node:crypto";
 
 const REPO_ROOT = join(import.meta.dirname, "..");
 const A = join(REPO_ROOT, ".claude", "skills");
 const B = join(REPO_ROOT, ".agents", "skills");
+
+const isFix = process.argv.includes("--fix");
 
 // The two top-level READMEs deliberately differ (one addresses CC users, one
 // addresses Codex CLI users). Skill CONTENT must mirror; per-CLI docs need not.
@@ -38,8 +40,31 @@ function hashFile(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-const aFiles = walk(A, A);
-const bFiles = walk(B, B);
+let aFiles = walk(A, A);
+let bFiles = walk(B, B);
+
+if (isFix) {
+  let synced = 0;
+  for (const rel of bFiles) {
+    const src = join(B, rel);
+    const dest = join(A, rel);
+    const srcHash = hashFile(src);
+    const destExists = statSync(dest, { throwIfNoEntry: false })?.isFile();
+    const destHash = destExists ? hashFile(dest) : null;
+    if (srcHash !== destHash) {
+      mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(src, dest);
+      synced += 1;
+    }
+  }
+  if (synced > 0) {
+    console.log(
+      `[check-skill-mirror] Mirrored ${synced} file(s) from .agents/skills/ to .claude/skills/.`,
+    );
+  }
+  aFiles = walk(A, A);
+  bFiles = walk(B, B);
+}
 
 const problems = [];
 
@@ -71,7 +96,7 @@ for (const rel of aFiles) {
 if (problems.length > 0) {
   console.error("Skill mirror out of sync between .claude/skills/ and .agents/skills/:\n");
   for (const p of problems) console.error(`  ${p}`);
-  console.error("\nRebuild the mirror: cp -r .claude/skills/. .agents/skills/  (or vice-versa)");
+  console.error("\nRebuild the mirror: node scripts/check-skill-mirror.mjs --fix");
   process.exit(1);
 }
 

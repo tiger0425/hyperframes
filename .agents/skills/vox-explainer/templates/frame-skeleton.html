@@ -1,0 +1,286 @@
+<template>
+  <style>
+    /* hf-scene-visibility-leak-guard — 集成块，原样保留，别删（见 references/pitfalls.md §5）
+       非活动场景宿主隐藏时是 visibility:hidden，帧内任何 visibility:visible 会逃出去。 */
+    [data-composition-id="{{COMPOSITION_ID}}"][style*="visibility: hidden"] * ,
+    [data-composition-id="{{COMPOSITION_ID}}"][style*="visibility: hidden"] {
+      visibility: hidden !important;
+    }
+
+    /* 规范字体块：全项目只有这一套，指向 assets/fonts/ 的真实文件。
+       任何出现在字体栈里的族名都必须有 @font-face 声明，OS 字体用 local() 满足。 */
+    @font-face {
+      font-family: "Noto Sans SC";
+      src: url("assets/fonts/NotoSansSC-VF.ttf") format("truetype-variations");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "JetBrains Mono";
+      src: url("assets/fonts/JetBrainsMono-400.woff2") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "JetBrains Mono";
+      src: url("assets/fonts/JetBrainsMono-700.woff2") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Caveat";
+      src: url("assets/fonts/Caveat-700-latin.woff2") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Microsoft YaHei";
+      src: local("Microsoft YaHei"), local("MicrosoftYaHei");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+
+    /* ── 设计令牌（frame.md 的色彩段；数值见 frame.md，不要在这里另立一套） ── */
+    #root {
+      --paper: #f1ede4;
+      --paper-deep: #e3dccc;
+      --paper-shadow: #ded6c4;
+      --ink: #121212;
+      --ink-soft: #514c44;
+      --rule: #c9c2b4;
+      --accent: #1d4ed8;
+      --signal: #e23a2e;
+      --marker: #ffd400;
+      --margin: 96px;
+      --gutter: 32px;
+    }
+
+    [data-composition-id="{{COMPOSITION_ID}}"] {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    /* 禁止项：不用渐变、阴影、圆角、玻璃拟态、emoji、纯白底 */
+    [data-composition-id="{{COMPOSITION_ID}}"] * {
+      box-sizing: border-box;
+      border-radius: 0;
+    }
+
+    /* ── 边缘锚：左上频道标签 + 右上帧编号（mono、小字号、ink-soft，永不抢焦点） ── */
+    .channel-tag,
+    .frame-index {
+      position: absolute;
+      top: var(--margin);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-weight: 500;
+      font-size: 22px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .channel-tag { left: var(--margin); }
+    .frame-index { right: var(--margin); font-variant-numeric: tabular-nums; }
+
+    /* 等宽元信息：数字与字段名一律 mono + tabular-nums */
+    .mono {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 焦点：每帧一个大字主张或一张主卡 */
+    .headline {
+      position: absolute;
+      left: var(--margin);
+      top: 34%;
+      width: 1200px;
+      font-weight: 900;
+      font-size: 132px;
+      letter-spacing: -0.02em;
+      line-height: 1.06;
+      color: var(--ink);
+    }
+
+    /* ── 材料：错位垫纸用 --paper-shadow 形成物理纸质阴影（零 CSS 阴影） ── */
+    .mat-paper {
+      position: absolute;
+      inset: -12px -12px -16px -12px;
+      background: var(--paper-shadow, #ded6c4);
+      transform: rotate(0.8deg);
+    }
+    .material {
+      position: absolute;
+      overflow: hidden;
+    }
+    .material img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    /* 手绘覆盖层：viewBox 用材料自身像素空间（2× 截屏 = 3788×1960），坐标按图内像素写 */
+    .material svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .scribble {
+      fill: none;
+      stroke: var(--signal);
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* 手绘体（旁注）：Caveat */
+    .hand {
+      font-family: "Caveat", "Noto Sans SC", cursive;
+      font-weight: 700;
+      color: var(--signal);
+    }
+
+    /* 入场隐藏：**用 visibility，不是 opacity**（见 references/pitfalls.md §5）。
+       opacity:0 的元素在冷渲染与布局审计里仍然占位可见 —— 那正是泄漏本身。
+       隐藏交给 visibility，位移动画交给 opacity/transform tween，两者分工。 */
+    #root .js-hide {
+      visibility: hidden;
+    }
+  </style>
+
+  <div id="root" data-composition-id="{{COMPOSITION_ID}}" data-width="1920" data-height="1080" data-duration="{{DURATION}}">
+    <!-- 地面层：纸感底 + 半调网点 + 颗粒（grain-overlay 的手法；不要手搓渐变） -->
+    <div
+      id="{{COMPOSITION_ID}}-paper"
+      class="clip"
+      data-start="0"
+      data-duration="{{DURATION}}"
+      data-track-index="0"
+      style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='2.2' cy='2.2' r='1.15' fill='%23121212' fill-opacity='0.12'/%3E%3C/svg%3E&quot;)"
+    ></div>
+
+    <!-- 内容层：这一帧的全部可见内容都放这里 -->
+    <div
+      id="{{COMPOSITION_ID}}-content"
+      class="clip"
+      data-start="0"
+      data-duration="{{DURATION}}"
+      data-track-index="1"
+    >
+      <div class="channel-tag">{{CHANNEL_TAG}}</div>
+      <div class="frame-index">{{FRAME_NN}} / {{FRAMES}}</div>
+
+      <!-- 焦点：本帧唯一的主张。以 data-layout-allow-overflow 声明设计内的越界。
+           ⚠️ 不要给这个元素加 js-hide：它走自己的 fromTo（opacity 0→1）。
+              同时挂 js-hide 会让 reveal pass **跳过**它（已有 tween），
+              于是 CSS 的 visibility:hidden 一直生效 → 文字永远不出现。 -->
+      <div class="headline" id="{{COMPOSITION_ID}}-headline">{{HEADLINE}}</div>
+
+      <!-- 若某元素**没有** tween、只想在某个时刻"出现"，才给它 js-hide（由 reveal pass 揭示）：
+           <div class="callout js-hide" id="{{COMPOSITION_ID}}-callout">…</div>
+           选择器与揭示属性必须与 CSS 配对（CSS: visibility:hidden → pass: visibility:visible）。 -->
+
+      <!-- 材料（真实截屏）：
+           <div class="material" style="left:820px;top:300px;width:1000px" data-layout-allow-overflow>
+             <img src=".media/assets/ui-xxx.png" alt="">
+             <svg viewBox="0 0 3788 1960" preserveAspectRatio="none">
+               <path class="scribble" id="{{COMPOSITION_ID}}-m1" d="M 0 0 C 0 0, 0 0, 0 0"/>
+             </svg>
+           </div>
+
+           viewBox 必须等于**该 img 自身的像素空间**，不是固定值：
+             · 满幅 2× 截屏 → "0 0 3788 1960"（上面就是这种，占多数）
+             · 要放大某区域 → 给同一像素空间一个窗口 + preserveAspectRatio="xMinYMin meet"
+                              例："300 250 3280 1640"
+             · 裁切派生的材料 → 用该文件自身尺寸，例："0 0 1380 770"（ui-tasks-a11.png）
+           手绘路径的 d 用测量工具量出图内像素坐标再写，不要估。
+           笔色：默认红 #e23a2e；落在暗底/墨块内改粉白 #f1ede4，否则看不见。 -->
+    </div>
+
+    <!-- 颗粒层：纸纹质感 -->
+    <div
+      id="{{COMPOSITION_ID}}-grain"
+      class="clip"
+      data-start="0"
+      data-duration="{{DURATION}}"
+      data-track-index="2"
+      style="opacity:0.06;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"
+    ></div>
+  </div>
+
+  <script>
+    (function () {
+      const tl = gsap.timeline();
+
+      // ── 连续推轨：本帧根，选择器必须是 [data-composition-id="…"] 限定形。
+      //    写成 #root[data-composition-id="…"] 会静默失效（见 references/pitfalls.md §3）。
+      const SLOT = {{DURATION}};
+      tl.fromTo(
+        '[data-composition-id="{{COMPOSITION_ID}}"]',
+        { scale: 1, x: 0, y: 0 },
+        { scale: 1.05, x: -16, y: -10, duration: SLOT - 0.6, ease: "none" },
+        0.2,
+      );
+
+      // ── 入场：优先用 fromTo，从根上不需要 .js-hide 的揭示约定（pitfalls §4）。
+      tl.fromTo(
+        "#{{COMPOSITION_ID}}-headline",
+        { opacity: 0, y: 36 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        0.4,
+      );
+
+      // ── 手绘逐笔画出：getTotalLength() 的 dash。画完归零偏移，否则重播时线是断的。
+      //    document.querySelectorAll("#{{COMPOSITION_ID}}-content .scribble").forEach((p) => {
+      //       const len = p.getTotalLength();
+      //       gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+      //       tl.to(p, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, 1.6);
+      //     });
+
+      tl.seek(0);
+
+      /* hf-js-hide-reveal-pass — 集成块，原样保留（pitfalls §4）。
+         为每个 .js-hide 元素在其自身动画首次触及的时刻注册零时长揭示；
+         从未被任何 tween 触及的元素在 0 处揭示（宁可早出现，也不能静默丢弃内容）。
+         揭示的属性必须与 CSS 的隐藏属性配对：CSS 用 visibility: hidden，这里写 visibility: "visible"。 */
+      (function () {
+        var scoped = document.querySelectorAll(".js-hide");
+        if (!scoped.length) return;
+        var firstTouch = new Map();
+        tl.getChildren(false, true, true).forEach(function (child) {
+          var targets =
+            typeof child.targets === "function" ? child.targets() : [];
+          for (var i = 0; i < targets.length; i += 1) {
+            var node = targets[i];
+            if (
+              !node ||
+              node.nodeType !== 1 ||
+              !node.classList ||
+              !node.classList.contains("js-hide")
+            ) {
+              continue;
+            }
+            var start = child.startTime();
+            var known = firstTouch.get(node);
+            if (known === undefined || start < known) firstTouch.set(node, start);
+          }
+        });
+        for (var j = 0; j < scoped.length; j += 1) {
+          var el = scoped[j];
+          var at = firstTouch.get(el);
+          tl.set(el, { visibility: "visible" }, at === undefined ? 0 : at);
+        }
+      })();
+      /* end hf-js-hide-reveal-pass */
+
+      window.__timelines["{{COMPOSITION_ID}}"] = tl;
+    })();
+  </script>
+</template>

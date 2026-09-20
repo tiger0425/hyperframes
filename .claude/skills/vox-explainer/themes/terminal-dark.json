@@ -1,0 +1,21 @@
+{
+  "name": "terminal-dark",
+  "displayName": "暗黑极客命令行终端风",
+  "colors": {
+    "paper": "#0D1117",
+    "paper-deep": "#161B22",
+    "paper-shadow": "#010409",
+    "ink": "#C9D1D9",
+    "ink-soft": "#8B949E",
+    "rule": "#30363D",
+    "accent": "#58A6FF",
+    "signal": "#F85149",
+    "marker": "#3FB950"
+  },
+  "dark": true,
+  "defaultScribbleColor": "#58A6FF",
+  "borders": {
+    "heavy": "3px solid #30363D",
+    "light": "1px solid #21262D"
+  }
+}

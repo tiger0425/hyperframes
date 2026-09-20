@@ -47,6 +47,33 @@ CLI users get the same auto-discover behaviour — keep the two in sync
 when editing. A `scripts/check-skill-mirror.mjs` check enforces this at
 CI time.
 
+## VOX explainer video
+
+The `vox-explainer` skill authors a VOX-style Chinese explainer/teaching
+video end to end: brief → storyboard → locked narration → TTS → frames
+built from real material → gates → render. It carries a narrative arc,
+the paper-and-ink visual grammar (paper ground, near-black body, one
+signal blue, red pen annotations), the real-material + hand-drawn-
+annotation method, and the voice-driven timing loop — plus the five
+gates as runnable scripts (`audit-frames`, `sync-frame-durations`,
+`verify-timeline`, `verify-film-audio`, and the `hf.mjs` wrapper for
+lint/check/snapshot), and a scaffolder that starts a project and copies
+those scripts into it.
+
+It is distilled from one shipped 4-minute, 12-frame Chinese explainer.
+**The frame count is a parameter, not a rule** — the arc and the
+per-frame discipline are what carry over; the number of frames comes
+from how the content segments. The skill directory contains a
+`references/` set (contract, pitfalls, pipeline stages, narrative arc,
+visual grammar, material sourcing, verification) and `templates/`.
+
+Two things it is deliberately honest about, both learned the hard way:
+`check` can report ok without having run its runtime stage (so the
+wrapper refuses to claim a pass without the `samples.Count` /
+`contrast.checked` counters), and in a sandbox that forbids named pipes
+`check` cannot start a headless browser at all — that is an environment
+boundary, not a composition bug.
+
 Each repo-native skill declares `metadata.internal: true`, so `npx skills add`
 skips it during normal installs (including `--all`). This does not change local
 agent discovery. To explicitly install these skills elsewhere, set
