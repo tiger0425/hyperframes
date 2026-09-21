@@ -299,6 +299,108 @@ function auditFrame(project, file, text, slots, findings) {
     }
   }
 
+  // ── 复合选择器「类名存在，但组合不命中」
+  //
+  // 【为什么必须查这一条】实测的静默失败：
+  //   作者把 choice 卡的三行写成 `#frame-05-mech-primitives-c1 .orow`，
+  //   而 `.orow` 只存在于 c2 卡里。类名 `.orow` 在文件里**确实存在**，
+  //   所以"类名是否存在"这种粗查一路放行；GSAP 拿到空目标集合后**不报错、不抛异常**，
+  //   只是那一组动画永远不发生 —— 与 pitfalls §3（推轨选择器写错会静默失效）同一家族，
+  //   只是从"漏了限定前缀"变成"指错了父节点"。
+  //   运行期唯一的痕迹是一条 console 警告（GSAP target not found），它不会让 check 失败。
+  //
+  // 判据：把 `#id` 限定的朴素后代选择器拆开，取 `#id` 那个元素的**整棵子树**，
+  //   要求后代部分（.cls / tag）真的出现在这棵子树里。
+  //   子树用标签深度扫描取得 —— 契约已禁止"注释里放真实元素"（_contract.md §4），扫描是安全的。
+  const VOID_TAGS = new Set([
+    "img", "br", "hr", "meta", "link", "input", "source", "area", "base", "col",
+    "embed", "track", "wbr", "path", "circle", "rect", "line", "polyline",
+    "polygon", "ellipse", "use", "stop",
+  ]);
+  const elementBlock = (html, idName) => {
+    const at = html.search(new RegExp(`id="${idName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    if (at < 0) return null;
+    const start = html.lastIndexOf("<", at);
+    if (start < 0) return null;
+    const tagRe = /<(\/?)([A-Za-z][A-Za-z0-9-]*)((?:"[^"]*"|[^>"])*)>/g;
+    tagRe.lastIndex = start;
+    let depth = 0;
+    let t = tagRe.exec(html);
+    while (t) {
+      const closing = t[1] === "/";
+      const selfClosing = /\/\s*$/.test(t[3]) || VOID_TAGS.has(t[2].toLowerCase());
+      if (closing) depth -= 1;
+      else if (!selfClosing) depth += 1;
+      if (depth <= 0) return html.slice(start, tagRe.lastIndex);
+      t = tagRe.exec(html);
+    }
+    return html.slice(start);
+  };
+  const scopedSelectors = new Set();
+  for (const m of script.matchAll(/["'`](#[A-Za-z0-9_-]+(?:\s+[^"'`,)]+)?)["'`]/g)) {
+    const sel = m[1];
+    if (!/\s/.test(sel)) continue; // 裸 #id：上面那条已查
+    if (/[[\]:*$^>~+]/.test(sel)) continue; // 只处理朴素后代形
+    scopedSelectors.add(sel);
+  }
+  for (const sel of scopedSelectors) {
+    const [idPart, ...rest] = sel.trim().split(/\s+/);
+    const block = elementBlock(text, idPart.slice(1));
+    if (!block) continue; // 缺 id 已由 dangling_id_reference 报过
+    for (const part of rest) {
+      const hit = part.startsWith(".")
+        ? new RegExp(`class="[^"]*\\b${part.slice(1)}\\b`).test(block)
+        : new RegExp(`<${part}\\b`).test(block);
+      if (!hit) {
+        add(
+          "error",
+          "selector_miss_within_scope",
+          `选择器 "${sel}" 的后代部分 "${part}" 不在 #${idPart.slice(1)} 的子树里`,
+          "GSAP 拿到空目标集合会静默跳过（不报错、不抛异常），那组动效永远不发生 — pitfalls §3",
+        );
+      }
+    }
+  }
+
+  // ── 动效不得全部前置：画面必须跟着旁白走
+  //
+  // 【为什么是 error 而不是提醒】实测教训：首版 14 帧的入场动效全部挤在开场 5–7 秒内跑完，
+  // 而单帧旁白有 22–72 秒 —— 结果是"开场闪一下，然后挂一张图静止几十秒"，观众体感就是 PPT。
+  // 三道门禁全都发现不了：lint 只管 tween 之间冲不冲突，check 只管某一时刻的布局与对比度，
+  // **没有任何一道在看"动效在时间轴上是怎么分布的"**。
+  //
+  // 判据：取所有写成**字面量**的 tween 起点，算最晚那个占槽位的比例。
+  //   · 槽位 < 18s 不算（短片本来就该在开头做完）
+  //   · 比例 < 0.40 → error；0.40–0.60 → info（报出数字让作者判断）
+  //   · 想显式声明"这一帧就是一次到位"的，给根节点加 data-hf-motion-frontload="ok" 跳过
+  //   · 字面量起点 < 3 个说明用了变量，静态判断不可靠，跳过（宁可漏报也不要误报）
+  const frontloadOptOut = /data-hf-motion-frontload="ok"/.test(text);
+  const slotDur = slot ?? Number(text.match(/data-duration="([\d.]+)"/)?.[1] ?? 0);
+  if (!frontloadOptOut && slotDur >= 18) {
+    const starts = [];
+    const callRe = /tl\.(?:to|from|fromTo|set)\(\s*[^,]+,\s*\{[\s\S]*?\}\s*,\s*([\d.]+)/g;
+    for (const m of script.matchAll(callRe)) starts.push(Number(m[1]));
+    if (starts.length >= 3) {
+      const last = Math.max(...starts);
+      const ratio = last / slotDur;
+      if (ratio < 0.4) {
+        add(
+          "error",
+          "motion_frontload",
+          `动效全部前置：最晚的 tween 起点在第 ${last.toFixed(2)}s，只占槽位 ${slotDur}s 的 ${(ratio * 100).toFixed(0)}%`,
+          "把每个元素的出画时刻对到旁白的句子节拍上：先 beat-timeline.mjs 量真实停顿，再 beat-at.mjs 定秒点 — pitfalls §10",
+        );
+      } else if (ratio < 0.6) {
+        add(
+          "info",
+          "motion_spread_ratio",
+          `最晚的 tween 起点占槽位 ${(ratio * 100).toFixed(0)}%（建议 ≥60%，让画面在整帧持续生长）`,
+          "用 beat-timeline / beat-at 把出画时刻铺到整帧 — pitfalls §10",
+        );
+      }
+    }
+  }
+
   // ── §4 .js-hide 元素必须被某个 tween 触及（否则只在 reveal pass 的 0 处揭示）
   const jsHideEls = [...markup.matchAll(/class="[^"]*\bjs-hide\b[^"]*"[^>]*id="([^"]+)"/g)].map(
     (m) => m[1],

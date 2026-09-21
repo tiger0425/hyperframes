@@ -232,12 +232,44 @@ function main() {
     collectResidue(dest, text);
   }
 
-  // ── 门禁脚本复制进项目（自包含：接手者不需要知道技能目录在哪）
+  // ── 脚本复制进项目（自包含：接手者不需要知道技能目录在哪）。
+  //    分两组：通用门禁 -> tools/vox/；作者侧生成 -> tools/（这两组的分工见 references/_contract.md §5）
   const scriptsDir = join(SKILL_ROOT, "scripts");
-  const scripts = readdirSync(scriptsDir).filter(
-    (f) => f.endsWith(".mjs") && f !== "init-vox-project.mjs",
-  );
-  for (const s of scripts) {
+
+  const GATE_SCRIPTS = [
+    "audit-frames.mjs",
+    "sync-frame-durations.mjs",
+    "verify-timeline.mjs",
+    "verify-film-audio.mjs",
+    "hf.mjs",
+    "draft-voice-timeline.mjs",
+    "gen-vox-annotation.mjs",
+  ];
+  /** 作者侧：生成器与素材脚本。run 之前必须先读它们的头部注释（路径多为本机示例） */
+  const AUTHORING_SCRIPTS = [
+    "slots.mjs",
+    "ink.mjs",
+    "gen-frames.mjs",
+    "gen-index.mjs",
+    "align-cues.py",
+    "synthesize_voice.py",
+    "shot.ps1",
+  ];
+
+  const available = new Set(readdirSync(scriptsDir));
+  for (const s of GATE_SCRIPTS) {
+    if (!available.has(s)) continue;
+    cpSync(join(scriptsDir, s), join(target, "tools", "vox", s));
+    written.push(`tools/vox/${s}`);
+  }
+  for (const s of AUTHORING_SCRIPTS) {
+    if (!available.has(s)) continue;
+    cpSync(join(scriptsDir, s), join(target, "tools", s));
+    written.push(`tools/${s}`);
+  }
+  // beat-* / check-selectors 这类可选工具也一并带上（有就复制）
+  for (const s of ["beat-timeline.mjs", "beat-at.mjs", "check-selectors.mjs"]) {
+    if (!available.has(s)) continue;
     cpSync(join(scriptsDir, s), join(target, "tools", "vox", s));
     written.push(`tools/vox/${s}`);
   }
@@ -258,6 +290,22 @@ function main() {
 | \`verify-film-audio.mjs\` | 语音 vs 杂音判别 | \`node tools/vox/verify-film-audio.mjs <media> <start> <dur>\` |
 | \`gen-vox-annotation.mjs\` | DOM/坐标锚定手绘 SVG 生成器 | \`node tools/vox/gen-vox-annotation.mjs --rect "x,y,w,h"\` |
 | \`draft-voice-timeline.mjs\`| 前置文案时序推导与打样 | \`node tools/vox/draft-voice-timeline.mjs\` |
+
+## tools/ —— 作者侧生成脚本（改了 frames-data / cues.json 之后按序重跑）
+
+| 脚本 | 用途 | 命令 |
+|---|---|---|
+| \`synthesize_voice.py\` | 旁白合成 + 量真实秒数 + 写 \`.media/voice-manifest.json\` | \`python tools/synthesize_voice.py [--frame NN]\` |
+| \`align-cues.py\` | 词级对齐：\`SCRIPT.md\` + \`tools/cues.json\` + faster-whisper → \`tools/cue-times.json\` | \`python tools/align-cues.py --model medium\` |
+| \`gen-frames.mjs\` | 按 \`tools/frames-data.mjs\` 生成 N 帧 + N 个侧车（构建时注入 CUE 表、自动补 \`position\`） | \`node tools/gen-frames.mjs\` |
+| \`gen-index.mjs\` | 装配 \`index.html\`（槽位 + 旁白轨 + 音效轨） | \`node tools/gen-index.mjs\` |
+| \`slots.mjs\` | 槽位表的唯一计算处（读 wav 头真值） | 被上面两个 import，不单独跑 |
+| \`ink.mjs\` | 确定性手绘路径（circle / underline / arrow / rect / check / slash） | 被 \`frames-data.mjs\` import |
+| \`shot.ps1\` | 本机 Chrome 无头实拍真实页面（2× → 3788×1960） | \`powershell -File tools/shot.ps1 -Url <url> -Out <png>\` |
+
+> **要自己改的**：\`tools/frames-data.mjs\`（逐帧 CSS / markup / 时间轴）与 \`tools/cues.json\`（线索表）
+> 是每个项目自己的内容；\`tools/cue-times.json\` 是机器产物、**不许手改**；
+> 帧里**不许写死秒数**。同步链的做法见技能 \`references/voice-sync.md\`。
 
 ## 本项目的关键约束
 

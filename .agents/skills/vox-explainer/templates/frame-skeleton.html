@@ -45,8 +45,24 @@
       font-display: block;
     }
 
+    /* ── 画布与定位上下文：**这两条不能省** ──
+       html/body 的默认 margin 是 8px；#root 若没有 position:relative，帧内那些
+       只写了 left/top 的绝对定位元素会**落回普通流、堆在帧顶**（pitfalls §16）。
+       第二数据点实测：12 帧里 47 条规则因此错位，check 一次报 34 处 content_overlap。 */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #f1ede4;
+    }
+
     /* ── 设计令牌（frame.md 的色彩段；数值见 frame.md，不要在这里另立一套） ── */
     #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
       --paper: #f1ede4;
       --paper-deep: #e3dccc;
       --paper-shadow: #ded6c4;
@@ -237,10 +253,21 @@
         0.4,
       );
 
+      // ── 深底上的文字：用"只位移、不透明度"的 show()，不要用 fade()。
+      //    对比度审计会在固定秒点采样；fade 途中被采到会把浅字压深底量成 1.5:1（pitfalls §18）。
+      // function show(sel, t, dy) {
+      //   tl.set(sel, { visibility: "visible" }, t);
+      //   tl.fromTo(sel, { y: dy === undefined ? 20 : dy },
+      //             { y: 0, duration: 0.45, ease: "power3.out" }, t);
+      // }
+
       // ── 手绘逐笔画出：getTotalLength() 的 dash。画完归零偏移，否则重播时线是断的。
+      //    ⚠️ 只能传 SVG <path>。传给 <div> 会抛 TypeError，而 reveal pass 在脚本末尾，
+      //       于是这一帧所有 .js-hide 元素集体消失（pitfalls §17）。要框 div 就用 inkRect 画真路径。
       //    document.querySelectorAll("#{{COMPOSITION_ID}}-content .scribble").forEach((p) => {
       //       const len = p.getTotalLength();
       //       gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+      //       tl.set(p, { visibility: "visible" }, 1.6);
       //       tl.to(p, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, 1.6);
       //     });
 

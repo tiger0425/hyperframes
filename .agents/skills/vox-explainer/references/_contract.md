@@ -38,6 +38,9 @@
 - `sync-frame-durations --check` 的判据是 **`已核对帧数 == 项目帧数`**，不是 `12/12`。
 - 帧序号 `NN` 两位宽（`01`…`99`），超过 99 帧才需要改宽度。
 - 时长、`data-start`、总长全部由槽位表算出，不存在任何常数。
+- **帧不是手抄的，是生成的**：字体块 / 泄漏守卫 / reveal pass / 四层时长 / `position` 补齐
+  各写一次（`tools/gen-frames.mjs` 的 `buildFrame()`），逐帧只提供 CSS + markup + 时间轴。
+  手抄 N 份帧必然在某一份漏掉一条契约 —— `pitfalls.md` §16/§17 就是这么发生的。
 
 ---
 
@@ -153,6 +156,25 @@
 | 音效数量 | 7 个稀疏标点（不是垫床）——VOX 的克制用法 |
 | 素材基准 | 帧内 `src` 写**项目根相对**路径，如 `.media/assets/ui-roster.png`、`assets/fonts/...` |
 | 时间轴注册 | `window.__timelines["<composition-id>"] = tl;`（非 paused），末尾 `tl.seek(0)` |
+| `#root` 定位模型 | **必须 `position: relative` + 显式 `1920×1080`**，且 `html, body { margin:0 }`。漏了它，帧内绝对定位元素会落回普通流（`pitfalls.md` §16） |
+| 深底文字入场 | 用「只位移不透明」的 `show()`，不用 `fade()`（否则对比度审计会在淡入中途采样，`pitfalls.md` §18） |
+
+### 第二个数据点（`freetoken-v013-vox`）—— 用来判断「哪些是实例、哪些是规律」
+
+| 事实 | 第一个数据点（dsh，参考实例） | 第二个数据点（freetoken） |
+|---|---|---|
+| 帧数 | 12 | **12**（但分段不同：`3+4+1+1+2+1`，机制 4 条、演示 2 步） |
+| 成片总长 | 244.1s | **267.4s** |
+| 旁白总长 / 引擎 | 210.09s / edge-tts | **233.472s / IndexTTS 2.5 零样本克隆** |
+| 单条旁白 | 8.266–22.166s | **8.057–26.706s** |
+| 槽位余量 | 2.67–2.73s | **2.70–2.78s**（同一条规律，独立复现） |
+| wav 规格 | 22050Hz·16bit·mono | **24000Hz·16bit·mono** |
+| 音轨 | 7 个稀疏音效 | **7 个稀疏音效**（ffmpeg 确定性合成，无配乐） |
+| 同步方式 | `beat-*`（停顿 + 比例插值） | **词级对齐**（12 帧 / 97 条线索全命中）→ `voice-sync.md` |
+| 渲染 | 690.8s，需设 `PRODUCER_STREAMING_ENCODE_MAX_DURATION_SECONDS` | 267.4s，**同样必须设**（默认 240 会挡） |
+
+**读法**：帧数、时长、余量都是实例取值；**跨项目稳定的是「槽位余量 ≈ 2.7s」、7 个稀疏音效、
+30fps 1920×1080、以及那条长片渲染闸门** —— 第二个数据点把这几条各复现了一次。
 
 ### 帧内骨架的硬结构（`templates/frame-skeleton.html` 就是这个）
 
@@ -234,8 +256,23 @@
 | `audit-frames.mjs` | 静态扫 9 条已知坑（支持 --frame 单帧） | `node <skill>/scripts/audit-frames.mjs [--project .] [--frame NN] [--json]` | `findings: 0` |
 | `sync-frame-durations.mjs` | 时长对齐与侧车同步（支持 --frame 单帧） | `node <skill>/scripts/sync-frame-durations.mjs [--project .] [--frame NN] [--check]` | `已核对帧数 == 目标帧数`（同时同步 `.motion.json`） |
 | `verify-timeline.mjs` | 槽位 vs 旁白真实时长 | `node <skill>/scripts/verify-timeline.mjs [--project .] [--json]` | 每帧 `slot - voice >= 0`（允许至多 0.5s 的呼吸余量以下） |
-| `verify-film-audio.mjs` | 语音 vs 杂音判别 | `node <skill>/scripts/verify-film-audio.mjs <media> <start> <dur>` | 语音 CV ≥ 0.9 且静音帧 25–48% |
+| `verify-film-audio.mjs` | 语音 vs 杂音判别 | `node <skill>/scripts/verify-film-audio.mjs <media> <start> <dur>` | 语音 **CV ≥ 0.7**（克隆音/AAC；edge-tts 源 ≥ 0.9）且静音帧 25–48%；灰区补 ASR 内容级对稿（见 `verification.md` §5） |
 | `hf.mjs` | 门禁 CLI 包装（lint/check/snapshot） | `node <skill>/scripts/hf.mjs <lint\|check\|snapshot> [args] [--out <file>]` | `lint: 0 error / 0 warning; check: samples>0 && contrast>0 && duration>0 && 0 error (未传 --out 返回 3)` |
+
+**作者侧脚本**（不是通用门禁，随项目初始化复制进 `tools/`；列在这里是为了名字与签名统一）：
+
+| 脚本 | 用途 | 调用 | 通过判据 |
+|---|---|---|---|
+| `slots.mjs` | **槽位表的唯一计算处**（读 `.media/voice-manifest.json` 的 wav 头真值，十分之一秒整数累加避免浮点漂移） | 被 `gen-frames.mjs` / `gen-index.mjs` import | 无独立输出；`TOTAL` 应等于 `index.html` 根 `data-duration` |
+| `gen-frames.mjs` | **按 `frames-data.mjs` 生成 N 帧 + N 个侧车**；含 `buildFrame()` 契约套件与 `autoPosition()` | `node tools/gen-frames.mjs` | 打印每帧 `slot / 线索数`；`autoPosition` 命中的选择器逐条列出 |
+| `gen-index.mjs` | **装配 `index.html`**（槽位 + 旁白轨 + 音效轨） | `node tools/gen-index.mjs` | 槽位数 == 帧数；总长 == `slots.mjs` 的 `TOTAL` |
+| `ink.mjs` | 确定性手绘路径（`inkCircle` / `inkUnderline` / `inkArrow` / `inkRect` / `inkCheck` / `inkSlash`） | 被 `frames-data.mjs` import | 同一 seed 每次产出同一条 path |
+| `synthesize_voice.py` | 旁白合成 + 量真实秒数 + 写 `.media/voice-manifest.json`（支持 `--frame NN` 单条重跑并并回清单） | `python tools/synthesize_voice.py [--frame NN] [--list]` | 每条合成成功且 wav 头可读；合计秒数与清单一致 |
+| `align-cues.py` | **词级对齐**：`SCRIPT.md` + `tools/cues.json` + faster-whisper → `tools/cue-times.json` | `python tools/align-cues.py --model medium [--frame NN]` | 线索 N/N 命中；打印 `align_hit` 与逐帧 ASR 转写 |
+| `shot.ps1` | 本机 Chrome 无头实拍真实页面（2× → 3788×1960） | `powershell -File tools/shot.ps1 -Url <url> -Out <png> [-Height 980]` | 输出文件存在且 `ffprobe` 报出预期尺寸 |
+
+> **作者侧脚本的纪律**：`tools/cues.json` 是**手写的唯一来源**；`tools/cue-times.json` 是**机器产物、不许手改**；
+> 帧里**不许写死秒数**。三者一旦互相污染，同步就再也复现不出来（详见 `voice-sync.md`）。
 
 `hf.mjs check` **必须在包装里固定注入 `--no-browser-gpu`**，并支持 `--out <file>`
 由子进程直接写出 JSON，程序化自验证 `samples.length`、`contrast.checked` 与 `duration` 均有效通过（返回 0；未指定 `--out` 返回退出码 3 说明未自验证）。
@@ -248,6 +285,12 @@
 ## 6 · 门禁命令的固定形状
 
 ```powershell
+# 0 · 改完 frames-data.mjs / cues.json 之后，先生成产物（顺序不能反）
+python tools/synthesize_voice.py          # 旁白 → .media/voice-manifest.json
+python tools/align-cues.py --model medium # 线索 → tools/cue-times.json
+node   tools/gen-frames.mjs               # 帧 + 侧车（构建时注入 CUE 表）
+node   tools/gen-index.mjs                # index.html（槽位 + 旁白轨 + 音效轨）
+
 # 1 · 槽位与侧车同步（自动同步 HTML data-duration 与 .motion.json duration_s）
 node <skill>/scripts/sync-frame-durations.mjs
 
@@ -292,3 +335,6 @@ node ..\..\packages\cli\dist\cli.js render .
 4. **事实必须有出处。** 讲产品能力时禁用未解释术语；实验性能力不许说成稳定能力。
    本项目取数来源：每个包自带的 `README.zh.md`、`cordis.patch.yml`、源码。
 5. **旁白锁定后不许改文案**。要改就得重跑该条 TTS + 重算槽位（阶段 3→5 回退）。
+6. **不要手抄帧**。契约部分由生成器写一次，逐帧只写「属于它自己的东西」。
+   同理：**不要手改 `cue-times.json`**、**不要在帧里写死秒数** —— 同步的可复现性全押在这两条上。
+   改完线索名或锚短语**必须重拍快照**：线索名写错不会报错，元素只会提前出现（`voice-sync.md` §5）。

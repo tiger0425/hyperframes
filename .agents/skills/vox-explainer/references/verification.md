@@ -50,6 +50,16 @@ node <skill>/scripts/hf.mjs check --at 5,20,35,55,80,100,125,145,170,190,210,232
 
 秒点取每帧的中段（用 `verify-timeline.mjs` 输出的槽位表），不要取帧边界——边界上正则结算，容易误判。
 
+### 2.1 采样点必须落在「画面最满的时刻」（节拍同步之后尤其重要）
+
+一旦按 §10 把动效铺到整帧，元素是**逐段出现**的。此时用"帧中段"采样会**漏掉一大半元素**：实测同一个项目，中点采样只查到 **42** 处对比度对象，改到每帧 80% 处（画面最满）是 **62** 处。
+
+```
+秒点 = 该帧起点 + 0.80 × 该帧槽位
+```
+
+自证法：`contrast.checked` 的数量应当与"这一帧的元素总数"同量级。**如果数字明显偏低，先怀疑采样点，而不是以为片子干净。**
+
 ## 3 · 时长门禁（槽位对齐与侧车同步）
 
 ```powershell
@@ -88,11 +98,40 @@ node <skill>/scripts/verify-film-audio.mjs <media> <start> <dur>
 
 | | 变异系数 CV | 静音帧占比 |
 |---|---|---|
-| **正常语音** | **≥ 0.9** | **25–48%** |
+| **正常语音**（edge-tts 参考值） | **≥ 0.9** | **25–48%** |
+| **正常语音**（克隆音 + AAC 转码后） | **≥ 0.7**（见下） | **25–48%** |
 | 杂音（权重不匹配） | ≈ 0.36 | ≈ 2% |
 
-**用法**：阶段④对每条 wav 跑一遍；出片后对成片里的旁白段再抽 2–3 处跑一遍
-（证明渲染出来的确实是语音，而不是静音或杂音）。
+**⚠️ CV 阈值不是常数 —— 它随 TTS 引擎与是否转码而变（第二个数据点实测）**：
+
+| 环节 | 实测 CV 区间 |
+|---|---|
+| edge-tts 源 wav（22050Hz，参考项目） | 1.10–1.27 |
+| **IndexTTS 克隆音源 wav**（24000Hz） | **0.836–0.934** |
+| 上述音频进 **AAC 48kHz 成片**后再抽段 | **0.734–0.883** |
+
+原因：CV 量的是**包络起伏的尖峰度**。克隆音的合成器比 edge-tts 更"平"（少尖峰），
+AAC 的有损编码又会再抹掉一点动态 —— 两者都会把 CV 往下压，**但都远离杂音的 0.36**。
+所以判据要写成：
+
+> **CV ≥ 0.7 且静音帧落在 25–48%** → 语音。
+> **CV 掉到 0.4 以下、静音帧掉到个位数** → 杂音，去查权重与 `--version`。
+
+CV 落在 0.7–0.9 之间是**灰区**，此时必须补第二道（内容级）：
+
+**内容级自证（更硬，强烈建议做）**——把抽出来的段落用 ASR 转写，与锁定稿对一下：
+
+```powershell
+# 从成片抽 8–12s，单声道 16k，喂给 faster-whisper
+ffmpeg -y -v error -ss <旁白起点> -t 12 -i renders/<成片>.mp4 -ac 1 -ar 16000 chk.wav
+# 再用 faster_whisper 转写 chk.wav（language='zh'），与 SCRIPT.md 的锁定稿逐句比
+```
+
+**转写文本与 `SCRIPT.md` 的锁定稿一致 = 这一段的语音是对的**。
+这一道同时抓两件事：不是静音、不是杂音，**且 TTS 没把专有名词念错**（见 [`voice-sync.md`](./voice-sync.md) §2）。
+
+**用法**：阶段④对每条 wav 跑一遍 CV + 静音帧；出片后对成片里的旁白段再抽 2–3 处
+（CV + 静音帧 + **ASR 转写对稿**）。
 
 > 本机实例：正确入口是 OpenMontage 的 `apps/indextts-bridge/client.py → IndexTTSSession`
 > （`model_version="2.5"`、纯零样本克隆、不传 `emo_vector`）。
@@ -134,16 +173,56 @@ node <skill>/scripts/hf.mjs snapshot --at <秒> --no-end --timeout 30000 --outpu
 
 **每帧至少看一张。** 12 帧就是 12 张 —— 这一步不能省，它是唯一能抓到"内容根本没出现"这类问题的手段。
 
+三条省时与防错纪律（都来自第二个数据点的实测）：
+
+1. **用联系表一次看多帧**：`snapshot` 会在输出目录里顺手写一张 `contact-sheet.jpg`，
+   把同一批的 3–4 张拼成一张。**读联系表**而不是逐张读，上下文成本降到 1/4。
+2. **一个批次可能整体失败**：实测出现过一次"同一批 4 张全空、但逐帧头部与材料正常"（重拍即好）。
+   **先重拍确认是批次问题，再去改代码** —— 否则会在错误的现场上做修复动作，把好的帧改坏（`pitfalls.md` §19）。
+3. **帧内顺序也要看**：元素"挤在帧顶 / 上下顺序与设计不符"是定位模型错（漏写 `position`）的症状，
+   不是排版问题（`pitfalls.md` §16）。看到顺序不对，先查 `getComputedStyle(el).position`。
+
 ## 8 · 出片后
 
 ```powershell
 node ..\..\packages\cli\dist\cli.js render .
 ```
 
+**>4 分钟必设长片闸门**（否则默认的磁盘帧缓存路线会要求上百 GB 临时空间而直接失败）：
+
+```powershell
+$env:PRODUCER_STREAMING_ENCODE_MAX_DURATION_SECONDS = "1200"   # 默认 240
+node ..\..\packages\cli\dist\cli.js render . -q looks
+```
+
+出片日志必须出现 `streaming-encode gate {… "enabled":true, "maxDurationSeconds":1200}`。
+
 - 出片后**只留一版**，删掉中间版本（否则接手者不知道该信哪个）。
-- 用 `verify-film-audio.mjs` 抽查 2–3 段旁白。
-- 记下成片参数：分辨率 / fps / 时长 / 体积 / 编码 / 音轨。
+- 用 `verify-film-audio.mjs` 抽查 2–3 段旁白（CV + 静音帧），**并用 ASR 把这几段转写出来对稿**（§5）。
+- 记下成片参数：分辨率 / fps / 时长 / 体积 / 编码 / 音轨，以及渲染路线与耗时。
 - 回写 `BRIEF.md` 运行中记录。
+
+## 9 · 画面与旁白同步（**做节拍/词级同步的片子必跑**）
+
+同步失败**不报错** —— 元素只是"出现得早了"，画面看着完全正常。
+唯一能抓住它的是"同一帧里取两个靠近的时刻对拍"。完整方法见 [`voice-sync.md`](./voice-sync.md) §6，
+这里只给最小可执行的三步：
+
+```powershell
+# 1 · 线索命中率与条数（期望 N/N 帧、N/N 条）
+python tools/align-cues.py --model medium
+
+# 2 · 线索时间的单调性（同一帧内必须随旁白递增）
+node -e "const j=require('./tools/cue-times.json');for(const k of Object.keys(j)){const c=j[k].cues;if(c.some((x,i)=>i&&x.t<c[i-1].t))console.log('NOT MONOTONIC',k)}"
+
+# 3 · 对拍：线索前 0.5s / 后 0.5s 各一张，看元素是否"只在该出现时才出现"
+node <skill>/scripts/hf.mjs snapshot --at <线索前>,<线索后> --no-end --output .hyperframes/sync-a
+```
+
+**通过判据**：① 线索 N/N 命中；② 每帧线索时间单调；③ 对拍快照上元素确实"跟着词出现"。
+
+**注意**：线索名写错**不会报错**——`at()` 对未定义的线索返回 0，元素会从帧首就在场。
+所以**改完线索名（或锚短语）必须重拍**，不能只看脚本输出。
 
 ---
 
@@ -156,6 +235,8 @@ node ..\..\packages\cli\dist\cli.js render .
 | 运行时 | `hf.mjs check --json` | 0/0 **且** samples>0 **且** contrast.checked>0 |
 | 时长 | `sync-frame-durations.mjs --check` | N/N frames ok |
 | 时间轴 | `verify-timeline.mjs --json` | 每帧 slot ≥ 0.3+voice，start 连续 |
-| 语音 | `verify-film-audio.mjs <media> <start> <dur>` | CV ≥ 0.9 且静音帧 25–48% |
+| 语音（CV） | `verify-film-audio.mjs <media> <start> <dur>` | edge-tts 源：CV ≥ 0.9；克隆音/AAC：**CV ≥ 0.7**；一律看静音帧 25–48% |
+| 语音（内容） | ASR 转写抽段 vs `SCRIPT.md` | 与锁定稿逐句一致 |
+| 同步 | `align-cues.py` + 线索单调性 + 对拍快照 | 线索 N/N 命中 · 同帧时间单调 · 元素跟着词出现 |
 | 动效 | 快照 + 量测脚本 | 几何差值落在预期区间 |
-| 眼睛 | 快照 + `read_image` | 6 条清单全过 |
+| 眼睛 | 快照 + `read_image`（读 `contact-sheet.jpg`） | 6 条清单全过 |
