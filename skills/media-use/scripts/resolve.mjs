@@ -90,6 +90,13 @@ const { values: args } = parseArgs({
     provider: { type: "string" },
     "avatar-id": { type: "string" },
     "voice-id": { type: "string" },
+    process: { type: "boolean", default: false },
+    image: { type: "string", multiple: true },
+    transparent: { type: "boolean", default: false },
+    width: { type: "string" },
+    height: { type: "string" },
+    steps: { type: "string" },
+    seed: { type: "string" },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -124,9 +131,15 @@ Options:
                   suggestions (grade only)
   --analyze       Return --for grade evidence without recording a candidate
   --local-only    Offline: skip every network provider
-  --provider      Force one generator (e.g. codex, mflux, kokoro, heygen)
+  --provider      Force one generator (e.g. codex, mflux, comfyui, kokoro, heygen)
   --avatar-id     Override the default avatar for heygen.video generation
   --voice-id      Override the default voice for voice/heygen.video generation
+  --process       Operate on existing media instead of finding/generating one
+                  (image: edit the --image references; needs a provider with a
+                  process capability, e.g. comfyui)
+  --image <path>  Reference image for --process; repeat for multiple (max 10)
+  --transparent   Ask an image generator for a native alpha channel (RGBA PNG)
+  --width --height --steps --seed   Generation overrides (px are snapped to 32)
   --json          Output JSON instead of one-line result
   --help, -h      Show this help`);
   process.exit(0);
@@ -399,6 +412,14 @@ async function run() {
     provider: args.provider,
     avatarId: args["avatar-id"],
     voiceId: args["voice-id"],
+    // Generation overrides. Strings from argv; providers coerce. px are snapped
+    // by the image providers (Qwen-Image-2.1 / FLUX both want multiples of 32).
+    width: args.width != null ? Number(args.width) : undefined,
+    height: args.height != null ? Number(args.height) : undefined,
+    steps: args.steps != null ? Number(args.steps) : undefined,
+    seed: args.seed != null ? Number(args.seed) : undefined,
+    transparent: args.transparent,
+    images: args.image || [],
   };
 
   // Adherence nudge (offline, no auto-reuse): the exact-cache floor missed and
@@ -421,23 +442,39 @@ async function run() {
     return resolveColor(type, intent, { projectDir });
   }
 
-  // 3. provider search — registry tries providers in order (heygen-CLI first)
+  // 3. providers — `process` operates ON existing media (--image references);
+  // otherwise search, then generate. Both walk the registry's ordered list.
   let searchResult = null;
   let providerFailure = null;
-  try {
-    searchResult = await runCapability(type, "search", intent, ctx);
-  } catch (error) {
-    providerFailure = error;
-    // search failed, try generate
-  }
 
-  // 4. generate fallback — same ordered cascade for the generate capability
-  if (!searchResult) {
+  if (args.process) {
+    // Asking to operate with nothing to operate on is a usage error, not a
+    // provider miss — say so instead of reporting an empty cascade.
+    if (type === "image" && !(args.image || []).length) {
+      exitError("--process for --type image needs at least one --image <path> reference");
+    }
     try {
-      searchResult = await runCapability(type, "generate", intent, ctx);
+      searchResult = await runCapability(type, "process", intent, ctx);
     } catch (error) {
-      providerFailure ??= error;
-      // generate failed too
+      providerFailure = error;
+    }
+  } else {
+    // 3a. search — registry tries providers in order (heygen-CLI first)
+    try {
+      searchResult = await runCapability(type, "search", intent, ctx);
+    } catch (error) {
+      providerFailure = error;
+      // search failed, try generate
+    }
+
+    // 3b. generate fallback — same ordered cascade for the generate capability
+    if (!searchResult) {
+      try {
+        searchResult = await runCapability(type, "generate", intent, ctx);
+      } catch (error) {
+        providerFailure ??= error;
+        // generate failed too
+      }
     }
   }
 
@@ -468,9 +505,11 @@ async function run() {
         ? providerFailure.message
         : type === "brand"
           ? "no brand spec found — add a frame.md or design.md (colors/font/logo) to this project. Run the HyperFrames design flow to create one; brand tokens are read locally for deterministic rendering."
-          : args.provider
-            ? `provider "${args.provider}" could not resolve ${type}: "${intent}"${localOnly ? " (--local-only skips network providers; drop it or the --provider override)" : ""}`
-            : `no provider could resolve ${type}: "${intent}"`;
+          : args.process
+            ? `no provider could process ${type}: "${intent}"${providerFailure ? ` (${providerFailure.message})` : ""} — image editing runs locally on ComfyUI; set COMFYUI_URL for a running server, or COMFYUI_LAUNCH to start one on demand`
+            : args.provider
+              ? `provider "${args.provider}" could not resolve ${type}: "${intent}"${localOnly ? " (--local-only skips network providers; drop it or the --provider override)" : ""}`
+              : `no provider could resolve ${type}: "${intent}"`;
     if (args.json) {
       console.log(
         JSON.stringify({

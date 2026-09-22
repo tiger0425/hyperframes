@@ -37,6 +37,7 @@ import { ltxVideoGenerate } from "./ltx-video-provider.mjs";
 import { localTtsGenerate } from "./tts-local-provider.mjs";
 import { codexImageGenerate } from "./codex-provider.mjs";
 import { mfluxImageGenerate } from "./mflux-provider.mjs";
+import { comfyuiImageEdit, comfyuiImageGenerate } from "./comfyui-provider.mjs";
 
 // Provider markers: `network` = hits a remote service (skipped by --local-only).
 // `paid` = may cost wallet credits after any OAuth/web-plan free allowance
@@ -56,10 +57,16 @@ const REGISTRY = {
   ],
   image: [
     N("heygen.asset.search", { search: imageProvider.search }),
-    // Catalog miss -> generate. Local first (best FLUX-class model the machine's
-    // RAM can run, spec-selected; free, private, kept under --local-only), then
-    // the codex CLI on the user's ChatGPT sub as the better-quality upsell and
-    // the fallback when no local model fits.
+    // Catalog miss -> generate. ComfyUI first when it is configured or already
+    // running: it is the opt-in highest-quality local path (Qwen-Image-2.1,
+    // native transparency, and multi-reference *editing* via the `process`
+    // capability). Silent no-op when neither COMFYUI_URL nor COMFYUI_LAUNCH is
+    // set and nothing answers on the default port, so it never displaces the
+    // mflux -> codex cascade for users who don't run it.
+    A("comfyui.local", { generate: comfyuiImageGenerate, process: comfyuiImageEdit }),
+    // Local FLUX-class gen, spec-selected to the machine's RAM (free, private,
+    // kept under --local-only), then the codex CLI on the user's ChatGPT sub as
+    // the better-quality upsell and the fallback when no local model fits.
     A("mflux.local", { generate: mfluxImageGenerate }),
     N("codex.image_gen", { generate: codexImageGenerate }),
   ],

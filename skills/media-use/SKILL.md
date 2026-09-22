@@ -1,6 +1,6 @@
 ---
 name: media-use
-description: Agent Media OS, the single skill for every media need in a HyperFrames project. Resolve BGM, SFX, image, icon, brand logo, voice, color grade, or LUT into a frozen local file or paste-ready block + ledger record (one verb, `resolve`); generate via TTS / music / image models when the catalog misses; produce voiceover, transcription, captions, and background removal through one shared audio engine; operate on media (cut / reframe / transform); and reuse assets across projects. Also use for vague feedback that real footage looks dark, flat, boring, should feel retro/camcorder/print/ASCII, needs privacy, or needs a media reveal.
+description: Agent Media OS, the single skill for every media need in a HyperFrames project. Resolve BGM, SFX, image, icon, brand logo, voice, color grade, or LUT into a frozen local file or paste-ready block + ledger record (one verb, `resolve`); generate via TTS / music / image models when the catalog misses, including transparent-background cuts and multi-reference image edits (`--process`); produce voiceover, transcription, captions, and background removal through one shared audio engine; operate on media (cut / reframe / transform); and reuse assets across projects. Also use for vague feedback that real footage looks dark, flat, boring, should feel retro/camcorder/print/ASCII, needs privacy, or needs a media reveal.
 ---
 
 # media-use
@@ -21,7 +21,7 @@ Returns one line: `resolved <id> → <path> (<type>, <metadata>)`. All search no
 | ------- | ----------------------------------------------------------------------------------- |
 | `bgm`   | background music (HeyGen catalog, 10k+ tracks)                                      |
 | `sfx`   | sound effects (bundled 19-file library + catalog)                                   |
-| `image` | photos, backgrounds (HeyGen asset search, 75k+ vectors)                             |
+| `image` | photos, backgrounds (HeyGen asset search, 75k+ vectors); local generation incl. transparent cuts; `--process` edits |
 | `icon`  | icons, symbols (transparent)                                                        |
 | `logo`  | official brand marks (svgl → simple-icons → GitHub avatar → favicon; never redrawn) |
 | `voice` | TTS voiceover (HeyGen free-usage path; optional local Kokoro)                       |

@@ -64,12 +64,59 @@ node <SKILL_DIR>/scripts/resolve.mjs --type lut --intent "teal orange blockbuste
 | `--from`        | Freeze a local file or direct public URL (ingest)                                    |
 | `--for`         | Analyze a local image/video and add measured adjust suggestions (`grade` only)       |
 | `--local-only`  | Offline: skip every network provider (cache + local only)                            |
-| `--provider`    | Force one generator (e.g. `codex`, `mflux`, `kokoro`, `heygen`)                      |
+| `--provider`    | Force one generator (e.g. `codex`, `mflux`, `comfyui`, `kokoro`, `heygen`)           |
+| `--process`     | Operate on existing media instead of finding/generating one (see below)              |
+| `--image <path>`| Reference image for `--process`; repeat for multiple (up to 10)                      |
+| `--transparent` | Ask an image generator for a native alpha channel (RGBA PNG)                         |
+| `--width/--height` | Generation size in px (snapped to a multiple of 32)                              |
+| `--steps`       | Sampling steps (`comfyui`: default 30; the official pipeline uses 40-50)             |
+| `--seed`        | Pin the seed for a reproducible generation                                           |
 | `--adopt`       | Bulk-import existing assets/ into manifest                                           |
 | `--doctor`      | Check local CLI dependencies; no manifest changes                                    |
 | `--stats`       | Print local usage stats from `.media/` and `~/.media`; no manifest changes           |
 | `--days N`      | Limit `--stats` to timestamped records/misses from the last N days                   |
 | `--json`        | Output JSON instead of one-line result                                               |
+
+## Generate, and operate on media (`--process`)
+
+`image` cascades search → generate: the HeyGen catalog first, then (on a miss) a
+local image generator, then the `codex` upsell. Generation flags:
+
+```bash
+# 1024² with a native alpha channel, on the local ComfyUI / Qwen-Image-2.1 path
+node <SKILL_DIR>/scripts/resolve.mjs --type image --provider comfyui \
+  --transparent --width 1024 --height 1024 --intent "a rally car on its own"
+# → resolved image_003 → .media/images/image_003.png (image, generated)
+```
+
+`--process` flips the verb from *find* to *operate on*: instead of resolving a
+new asset, it hands the `--image` references to a provider's **process**
+capability. ComfyUI is the provider that implements it (Qwen-Image-2.1 image
+editing, 1–10 references — the references are referenced from the prompt as
+`<image1>`, `<image2>`, …):
+
+```bash
+# single reference: replace the background, relight to match
+node <SKILL_DIR>/scripts/resolve.mjs --type image --process --provider comfyui \
+  --image .media/images/car.png \
+  --intent "replace the background with a rainy night street, wet asphalt, relight the car"
+
+# multi-reference: bring a property from one image onto another
+node <SKILL_DIR>/scripts/resolve.mjs --type image --process --provider comfyui \
+  --image .media/images/car.png --image .media/images/livery.png \
+  --intent "repaint the car from <image1> with the livery of <image2>, keep everything else"
+```
+
+Output defaults to a multiple-of-32 box; when `--width/--height` are omitted it
+takes the first reference's framing. `--transparent` keeps the alpha channel
+across the edit. The result is registered exactly like a generated asset —
+same ledger, same provenance (including the reference count), same global-cache
+promotion — so an edited image is reusable across projects like any other.
+
+Prompt adherence is the model's business, not the tool's: "keep X unchanged"
+instructions are honoured loosely. For a strict single-property change (swap the
+background), one reference is the reliable shape; multi-reference edits read
+more like *compose a new image from these references* than *inpaint reference 1*.
 
 ## Reuse before you resolve
 

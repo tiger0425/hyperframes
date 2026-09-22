@@ -40,9 +40,9 @@ test("heygen provider is first for every type it serves", () => {
   }
 });
 
-test("sanctioned providers only: heygen, local mflux/kokoro/ltx, codex, design spec, logo tiers", () => {
+test("sanctioned providers only: heygen, local comfyui/mflux/kokoro/ltx, codex, design spec, logo tiers", () => {
   const allowed =
-    /^heygen|^bundled\.sfx$|^mflux\.local$|^kokoro\.local$|^ltx\.local$|^codex\.image_gen$|^design_spec$|^svgl$|^simple-icons$|^github\.avatar$|^favicon\.ddg$|^color_grade\.local$|^cube_lut\.local$/;
+    /^heygen|^bundled\.sfx$|^comfyui\.local$|^mflux\.local$|^kokoro\.local$|^ltx\.local$|^codex\.image_gen$|^design_spec$|^svgl$|^simple-icons$|^github\.avatar$|^favicon\.ddg$|^color_grade\.local$|^cube_lut\.local$/;
   for (const t of listTypes()) {
     for (const p of getProviders(t)) {
       assert.ok(allowed.test(p.name), `${t} lists unsanctioned provider: ${p.name}`);
@@ -50,15 +50,28 @@ test("sanctioned providers only: heygen, local mflux/kokoro/ltx, codex, design s
   }
 });
 
-test("image cascade: heygen catalog, then local mflux, then the codex upsell", () => {
+test("image cascade: heygen catalog, then local ComfyUI, then mflux, then the codex upsell", () => {
   const ps = getProviders("image");
   assert.match(ps[0].name, /^heygen/, "heygen catalog first");
   const names = ps.map((p) => p.name);
+  const comfyui = ps.find((p) => p.name === "comfyui.local");
   const mflux = ps.find((p) => p.name === "mflux.local");
   const codex = ps.find((p) => p.name === "codex.image_gen");
+
+  // ComfyUI is the only provider with a process (edit) capability, so it must
+  // stay registered for --process to resolve at all.
+  assert.ok(comfyui && typeof comfyui.generate === "function", "local ComfyUI registered");
+  assert.ok(typeof comfyui.process === "function", "ComfyUI carries the process capability");
+  assert.ok(
+    !ps.some((p) => p.name !== "comfyui.local" && typeof p.process === "function"),
+    "ComfyUI is the sole process provider for image",
+  );
+
   assert.ok(mflux && typeof mflux.generate === "function", "local mflux registered");
   assert.ok(codex && typeof codex.generate === "function", "codex upsell registered");
+  assert.ok(names.indexOf("comfyui.local") < names.indexOf("mflux.local"), "ComfyUI before mflux");
   assert.ok(names.indexOf("mflux.local") < names.indexOf("codex.image_gen"), "local before codex");
+  assert.ok(!comfyui.network, "local ComfyUI is kept under --local-only");
   assert.ok(!mflux.network, "local mflux is kept under --local-only");
   assert.ok(codex.network, "codex is network (skipped under --local-only)");
 });

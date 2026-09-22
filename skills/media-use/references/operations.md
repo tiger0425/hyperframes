@@ -205,9 +205,16 @@ ffmpeg -i mix.wav \
 ## Generate: images (local first, cloud upsell)
 
 `resolve --type image` retrieves from the HeyGen catalog first; on a miss it
-GENERATES. Two paths, best-for-the-machine picked automatically:
+GENERATES. Pick the best path the machine can actually run:
 
-1. **Local (default, free, private): mflux** (FLUX-on-MLX). `resolve` spec-checks
+1. **Local, highest quality: ComfyUI + Qwen-Image-2.1** (`comfyui-provider.mjs`).
+   Opt-in through `COMFYUI_URL` / `COMFYUI_LAUNCH` (see `setup-providers.md`);
+   silently skipped when not configured or not reachable. It is the only
+   provider that returns **native transparency** (`--transparent` → RGBA PNG)
+   and the only one that implements **image editing** (`--process`, below), so
+   it takes priority whenever it is available.
+
+2. **Local, macOS-native: mflux** (FLUX-on-MLX). `resolve` spec-checks
    AVAILABLE RAM and runs the best FLUX-class model that fits, via
    `scripts/lib/local-models.mjs` (`imagegen` ladder) + `mflux-provider.mjs`.
    The RAM ladder (agent sees it via `describeModelLadder("imagegen", specs)`):
@@ -223,13 +230,44 @@ GENERATES. Two paths, best-for-the-machine picked automatically:
    at the medium tier (without it a 768x512 run swap-thrashed to 90 minutes on
    24GB; with it, 20 seconds).
 
-2. **Cloud upsell (better quality): the `codex` CLI** `image_gen` tool, on the
+3. **Cloud upsell (better quality): the `codex` CLI** `image_gen` tool, on the
    user's ChatGPT subscription (codex owns auth, no key here, no per-call
    charge). It is the automatic fallback when no local model fits AND the
    explicit "make it better" choice on any machine. Users who just want codex
    can ask for it directly. Verified: prompt -> raster -> frozen + ledgered.
 
-`--local-only` keeps mflux (once cached) and skips codex (network).
+`--local-only` keeps ComfyUI and mflux (once cached) and skips codex (network).
+
+### Edit an image (`--process`)
+
+Editing is the one operation media-use *does* wrap, because no other tool in the
+stack does it and the recipe was repeatedly fumbled. Semantics differ from
+generation: nothing is searched, and the `--image` references are supplied to
+the provider instead of being resolved.
+
+```bash
+# swap the background + relight (single reference — the reliable shape)
+node <SKILL_DIR>/scripts/resolve.mjs --type image --process --provider comfyui \
+  --image .media/images/car.png \
+  --intent "replace the background with a rainy night street, wet asphalt, relight the car"
+
+# bring one property from a second image onto the first
+node <SKILL_DIR>/scripts/resolve.mjs --type image --process --provider comfyui \
+  --image .media/images/car.png --image .media/images/livery.png \
+  --intent "repaint the car from <image1> with the livery of <image2>"
+```
+
+References are addressed from the prompt as `<image1>`, `<image2>`, … (up to
+10). Output defaults to the first reference's framing, rounded to a multiple of
+32; `--width/--height` override it, `--transparent` keeps the alpha channel.
+The result is ledgered like any generated asset, so it is reusable across
+projects immediately — no `--from` step needed.
+
+Honesty about adherence: "keep X unchanged" is honoured *loosely*. A single
+reference with one property changed (background, lighting, season) is reliable.
+Multi-reference edits behave more like *compose a new image from these
+references* than *inpaint reference 1* — expect the composition to be
+reinterpreted. Inspect the output; don't assume.
 
 ## Generate: video (`resolve --type video`, HeyGen avatar first)
 
