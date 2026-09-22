@@ -269,6 +269,12 @@ Multi-reference edits behave more like *compose a new image from these
 references* than *inpaint reference 1* — expect the composition to be
 reinterpreted. Inspect the output; don't assume.
 
+Alpha is normalized on the way out (Qwen-Image-2.1 emits a non-binary alpha
+channel in both directions): `--transparent` snaps the near-transparent
+background to zero so the cut-out composites cleanly, and without it the PNG is
+flattened to genuinely opaque. `--raw-alpha` opts out. Details + the measured
+numbers: `references/resolve.md`.
+
 ## Generate: video (`resolve --type video`, HeyGen avatar first)
 
 `resolve --type video "<intent>"` is the default path. It generates a

@@ -117,6 +117,10 @@ notes: the `int8_convrot` pair is ~16GB of weights — comfortable on a 24GB car
 at 1024², tight at the native 2048² (start lower and raise). Job and ready
 timeouts are `COMFYUI_JOB_TIMEOUT_MS` / `COMFYUI_READY_TIMEOUT_MS`.
 
+Both capabilities normalize the alpha channel on the way out through `ffmpeg`
+(already required by this skill) — see `references/resolve.md` for what that
+means for `--transparent` vs. a flat image, and `--raw-alpha` to opt out.
+
 Editing a real workflow instead? Any graph can be exported from ComfyUI as API
 JSON and posted to `POST /prompt` the same way this provider does; the two
 graphs here are the project's standardised pair, not the only possibility.

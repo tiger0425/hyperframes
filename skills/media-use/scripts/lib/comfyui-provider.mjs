@@ -19,8 +19,8 @@
 // Determinism: seed defaults to a fixed value (ctx.seed overrides), so the same
 // request against the same weights resolves to the same image.
 
-import { spawn } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 
@@ -442,6 +442,72 @@ export async function runGraph(url, graph, outPath, deps = {}) {
   throw new Error(`timed out after ${Math.round(timeoutMs / 1000)}s`);
 }
 
+// --- alpha normalization ----------------------------------------------------
+
+/**
+ * Qwen-Image-2.1's alpha is not binary, in both directions:
+ *   - a requested cut-out leaves the "empty" background at alpha 1-15, not 0,
+ *     which composites as a faint grey wash on dark backgrounds;
+ *   - an image that is not a cut-out still ships an alpha channel sitting at
+ *     241-254 over most of the frame, i.e. "opaque" is not quite opaque.
+ *
+ * So the raw model output is normalized the way the request was made: a cut-out
+ * gets its near-transparent pixels snapped to zero (anti-aliased edges from 16
+ * up are left alone), and anything else is flattened to genuinely opaque by
+ * dropping the alpha channel. `--raw-alpha` opts out and keeps the model's
+ * bytes verbatim. Threshold 16 is the top of the band the model actually emits.
+ */
+export const ALPHA_CLEAN_THRESHOLD = 16;
+
+/** ffmpeg -vf expression that normalizes alpha for a transparent/opaque target. */
+export function alphaFilter(transparent) {
+  return transparent
+    ? `format=rgba,lut=a='if(lt(val,${ALPHA_CLEAN_THRESHOLD}),0,val)'`
+    : "format=rgb24";
+}
+
+/**
+ * Rewrite `outPath` in place with normalized alpha. Best-effort by design: a
+ * missing/failing ffmpeg must never fail a resolve that already produced an
+ * image, so the raw file stays and the reason goes to stderr.
+ */
+export function normalizeAlpha(outPath, { transparent, deps = {} } = {}) {
+  const {
+    execFn = execFileSync,
+    existsFn = existsSync,
+    renameFn = renameSync,
+    unlinkFn = unlinkSync,
+    ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg",
+  } = deps;
+
+  const tmp = `${outPath}.alpha.png`;
+  try {
+    execFn(
+      ffmpegPath,
+      ["-y", "-loglevel", "error", "-i", outPath, "-vf", alphaFilter(transparent), tmp],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+    if (!existsFn(tmp)) return false;
+    renameFn(tmp, outPath); // Node replaces on Windows and POSIX alike
+    return true;
+  } catch (err) {
+    try {
+      if (existsFn(tmp)) unlinkFn(tmp);
+    } catch {
+      // the cleanup failure is not the story; the fallback below is
+    }
+    const why = err.stderr?.toString().trim().split(/\r?\n/).pop() || err.message;
+    console.error(`media-use: alpha normalization skipped (${why})`);
+    return false;
+  }
+}
+
+/** Normalize unless the caller asked for the model's raw bytes. */
+function maybeNormalizeAlpha(outPath, ctx, deps) {
+  if (ctx?.rawAlpha) return;
+  normalizeAlpha(outPath, { transparent: !!ctx?.transparent, deps });
+}
+
 // --- provider capabilities --------------------------------------------------
 
 const DEFAULT_STEPS = 30;
@@ -487,6 +553,7 @@ export async function comfyuiImageGenerate(intent, ctx = {}, deps = {}) {
 
   const outPath = outPathFor();
   await runGraph(url, graph, outPath, deps);
+  maybeNormalizeAlpha(outPath, ctx, deps);
   return generatedRecord({
     intent,
     outPath,
@@ -540,6 +607,7 @@ export async function comfyuiImageEdit(intent, ctx = {}, deps = {}) {
 
   const outPath = outPathFor();
   await runGraph(url, graph, outPath, deps);
+  maybeNormalizeAlpha(outPath, ctx, deps);
   return generatedRecord({
     intent,
     outPath,

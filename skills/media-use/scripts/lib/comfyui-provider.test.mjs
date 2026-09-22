@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  ALPHA_CLEAN_THRESHOLD,
+  alphaFilter,
   buildEditGraph,
   buildT2IGraph,
   comfyuiImageEdit,
@@ -8,6 +10,7 @@ import {
   comfyuiLaunchCommand,
   comfyuiProbe,
   ensureComfyui,
+  normalizeAlpha,
   readImageSize,
   runGraph,
   snapTo32,
@@ -109,6 +112,86 @@ test("snapTo32 snaps to Qwen-Image-2.1's required multiple and floors bad input"
 test("readImageSize reads PNG dimensions from the IHDR header", () => {
   assert.deepEqual(readImageSize(pngHeader(1920, 1080)), { width: 1920, height: 1080 });
   assert.equal(readImageSize(Buffer.from("not an image")), null);
+});
+
+// --- alpha normalization ----------------------------------------------------
+
+test("alphaFilter snaps near-transparent pixels for a cut-out, flattens otherwise", () => {
+  const cut = alphaFilter(true);
+  assert.match(cut, /^format=rgba,/);
+  assert.match(cut, new RegExp(`lt\\(val,${ALPHA_CLEAN_THRESHOLD}\\)`));
+  assert.match(cut, /,0,val\)/); // below threshold -> 0, above untouched
+  // Opacity requested -> drop the channel entirely, so "opaque" really is
+  // opaque and the model's 241-254 haze cannot survive into a composite.
+  assert.equal(alphaFilter(false), "format=rgb24");
+});
+
+function stubAlphaExec({ fail = false } = {}) {
+  const runs = [];
+  return {
+    runs,
+    execFn: (bin, argv) => {
+      runs.push({ bin, argv });
+      if (fail) {
+        const err = new Error("exit 1");
+        err.stderr = "alpha.png: No such file or directory";
+        throw err;
+      }
+      return "";
+    },
+  };
+}
+
+test("normalizeAlpha rewrites the file in place through ffmpeg", () => {
+  const { runs, execFn } = stubAlphaExec();
+  const renamed = [];
+  const ok = normalizeAlpha("/tmp/out.png", {
+    transparent: true,
+    deps: {
+      execFn,
+      existsFn: () => true,
+      renameFn: (from, to) => renamed.push({ from, to }),
+      unlinkFn: () => {},
+    },
+  });
+
+  assert.equal(ok, true);
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].bin, "ffmpeg");
+  assert.ok(runs[0].argv.includes("-vf"));
+  assert.equal(runs[0].argv[runs[0].argv.indexOf("-vf") + 1], alphaFilter(true));
+  // ffmpeg cannot write over its own input, so it lands beside then replaces.
+  assert.equal(renamed.length, 1);
+  assert.equal(renamed[0].from, "/tmp/out.png.alpha.png");
+  assert.equal(renamed[0].to, "/tmp/out.png");
+});
+
+test("normalizeAlpha keeps the raw artifact when ffmpeg is unavailable", () => {
+  const { execFn } = stubAlphaExec({ fail: true });
+  const removed = [];
+  const renamed = [];
+  const ok = normalizeAlpha("/tmp/out.png", {
+    transparent: true,
+    deps: {
+      execFn,
+      existsFn: () => true,
+      renameFn: (from, to) => renamed.push({ from, to }),
+      unlinkFn: (p) => removed.push(p),
+    },
+  });
+
+  assert.equal(ok, false, "a failed cleanup must not throw — the image already exists");
+  assert.equal(renamed.length, 0, "the raw file is left untouched");
+  assert.deepEqual(removed, ["/tmp/out.png.alpha.png"]);
+});
+
+test("normalizeAlpha reports false when ffmpeg exits without producing output", () => {
+  const { execFn } = stubAlphaExec();
+  const ok = normalizeAlpha("/tmp/out.png", {
+    transparent: false,
+    deps: { execFn, existsFn: () => false, renameFn: () => {}, unlinkFn: () => {} },
+  });
+  assert.equal(ok, false);
 });
 
 // --- graph builders ---------------------------------------------------------
@@ -265,11 +348,20 @@ test("comfyuiImageGenerate is a miss when ComfyUI is unavailable", async () => {
 test("comfyuiImageGenerate queues a graph and freezes the returned PNG", async () => {
   const { fetchFn, calls } = stubFetch();
   const { files, writeFileFn } = written();
+  const { runs, execFn } = stubAlphaExec();
 
   const res = await comfyuiImageGenerate(
     "a modern rally car",
     { width: 1000, height: 1000, steps: 20, seed: 5, transparent: true },
-    { fetchFn, sleep: noSleep, writeFileFn },
+    {
+      fetchFn,
+      sleep: noSleep,
+      writeFileFn,
+      execFn,
+      existsFn: () => true,
+      renameFn: () => {},
+      unlinkFn: () => {},
+    },
   );
 
   assert.equal(res.ext, ".png");
@@ -280,10 +372,32 @@ test("comfyuiImageGenerate queues a graph and freezes the returned PNG", async (
   assert.equal(files.size, 1);
   assert.ok(files.get(res.localPath).length > 0);
 
+  // --transparent: the alpha the model wrote is thresholded, not taken as-is.
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].argv[runs[0].argv.indexOf("-vf") + 1], alphaFilter(true));
+
   const queued = JSON.parse(calls.find((c) => c.url.endsWith("/prompt")).init.body);
   assert.match(queued.prompt.text.inputs.prompt, /RGBA format image with transparency/);
   assert.equal(queued.prompt.latent.inputs.width, 992);
   assert.equal(queued.prompt.sampler.inputs.steps, 20);
+});
+
+test("comfyuiImageGenerate skips alpha work when ctx.rawAlpha is set", async () => {
+  const { fetchFn } = stubFetch();
+  const { execFn, runs } = stubAlphaExec();
+  await comfyuiImageGenerate(
+    "a modern rally car",
+    { transparent: true, rawAlpha: true },
+    {
+      fetchFn,
+      sleep: noSleep,
+      writeFileFn: () => {},
+      execFn,
+      existsFn: () => true,
+      renameFn: () => {},
+    },
+  );
+  assert.equal(runs.length, 0, "--raw-alpha keeps the model's bytes untouched");
 });
 
 test("comfyuiImageGenerate surfaces a ComfyUI node error instead of hanging", async () => {
@@ -336,9 +450,11 @@ test("comfyuiImageEdit uploads each reference and queues an edit graph", async (
       writeFileFn,
       existsFn: () => true,
       readFileFn: (p) => (p === refs[0] ? pngHeader(1920, 1080) : Buffer.from("jpegish")),
+      execFn: () => "",
+      renameFn: () => {},
+      unlinkFn: () => {},
     },
   );
-
   assert.equal(res.metadata.provider, "comfyui.qwen_image_2_1_edit");
   assert.equal(res.metadata.provenance.references, 2);
   // Output defaults to the first reference's framing (1080 -> snapped 1088).
@@ -365,6 +481,9 @@ test("comfyuiImageEdit wraps the prompt for transparency, like generate does", a
       writeFileFn: () => {},
       existsFn: () => true,
       readFileFn: () => pngHeader(512, 512),
+      execFn: () => "",
+      renameFn: () => {},
+      unlinkFn: () => {},
     },
   );
   const queued = JSON.parse(calls.find((c) => c.url.endsWith("/prompt")).init.body);
@@ -397,6 +516,9 @@ test("comfyuiImageEdit caps references at Qwen-Image-2.1's 10", async () => {
       writeFileFn: () => {},
       existsFn: () => true,
       readFileFn: () => pngHeader(512, 512),
+      execFn: () => "",
+      renameFn: () => {},
+      unlinkFn: () => {},
     },
   );
   const queued = JSON.parse(calls.find((c) => c.url.endsWith("/prompt")).init.body);

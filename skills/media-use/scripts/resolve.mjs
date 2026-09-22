@@ -93,6 +93,7 @@ const { values: args } = parseArgs({
     process: { type: "boolean", default: false },
     image: { type: "string", multiple: true },
     transparent: { type: "boolean", default: false },
+    "raw-alpha": { type: "boolean", default: false },
     width: { type: "string" },
     height: { type: "string" },
     steps: { type: "string" },
@@ -139,6 +140,8 @@ Options:
                   process capability, e.g. comfyui)
   --image <path>  Reference image for --process; repeat for multiple (max 10)
   --transparent   Ask an image generator for a native alpha channel (RGBA PNG)
+  --raw-alpha     Keep the image generator's alpha byte-for-byte instead of
+                  normalizing it (see references/resolve.md)
   --width --height --steps --seed   Generation overrides (px are snapped to 32)
   --json          Output JSON instead of one-line result
   --help, -h      Show this help`);
@@ -419,6 +422,7 @@ async function run() {
     steps: args.steps != null ? Number(args.steps) : undefined,
     seed: args.seed != null ? Number(args.seed) : undefined,
     transparent: args.transparent,
+    rawAlpha: args["raw-alpha"],
     images: args.image || [],
   };
 

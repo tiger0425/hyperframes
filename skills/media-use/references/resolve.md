@@ -68,6 +68,7 @@ node <SKILL_DIR>/scripts/resolve.mjs --type lut --intent "teal orange blockbuste
 | `--process`     | Operate on existing media instead of finding/generating one (see below)              |
 | `--image <path>`| Reference image for `--process`; repeat for multiple (up to 10)                      |
 | `--transparent` | Ask an image generator for a native alpha channel (RGBA PNG)                         |
+| `--raw-alpha`   | Keep the generator's alpha byte-for-byte instead of normalizing it                   |
 | `--width/--height` | Generation size in px (snapped to a multiple of 32)                              |
 | `--steps`       | Sampling steps (`comfyui`: default 30; the official pipeline uses 40-50)             |
 | `--seed`        | Pin the seed for a reproducible generation                                           |
@@ -112,6 +113,32 @@ takes the first reference's framing. `--transparent` keeps the alpha channel
 across the edit. The result is registered exactly like a generated asset —
 same ledger, same provenance (including the reference count), same global-cache
 promotion — so an edited image is reusable across projects like any other.
+
+### Alpha is normalized, not taken raw
+
+Qwen-Image-2.1's alpha channel is not binary in either direction, so the raw
+output composites badly:
+
+- a requested cut-out leaves the "empty" background at **alpha 1-15**, which
+  reads as a faint grey wash once composited on anything dark;
+- an image that is *not* a cut-out still ships an alpha channel sitting at
+  **241-254** across most of the frame — "opaque" is not quite opaque, so the
+  result is very slightly translucent.
+
+So the provider fixes it up to match how you asked, using ffmpeg (already a hard
+dependency of this skill):
+
+| Request             | What happens to the alpha                                                     |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `--transparent`     | pixels below 16 are snapped to 0; anti-aliased edges (16+) are left untouched |
+| neither flag        | the alpha channel is dropped — the PNG is genuinely, fully opaque             |
+| `--raw-alpha`       | nothing; the model's bytes are kept verbatim                                  |
+
+This is why a cut-out is expected to be **requested** with `--transparent`, even
+when the source image was already transparent: ask for transparency and you get a
+clean cut-out; don't, and you get a flat image. If normalization cannot run (no
+ffmpeg, or it errors), the resolve still succeeds — the raw file is kept and the
+reason goes to stderr.
 
 Prompt adherence is the model's business, not the tool's: "keep X unchanged"
 instructions are honoured loosely. For a strict single-property change (swap the
