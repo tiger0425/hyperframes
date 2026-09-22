@@ -1,0 +1,2207 @@
+[
+  {
+    "text": "Okay, so if you pretty much look at what",
+    "start": 0.32,
+    "duration": 4.479
+  },
+  {
+    "text": "every frontier lab has been doing over",
+    "start": 2.399,
+    "duration": 5.761
+  },
+  {
+    "text": "the past 2 years, it's all been in one",
+    "start": 4.799,
+    "duration": 6.081
+  },
+  {
+    "text": "direction. They've all been focused on",
+    "start": 8.16,
+    "duration": 4.96
+  },
+  {
+    "text": "reasoning. And to get that reasoning,",
+    "start": 10.88,
+    "duration": 4.16
+  },
+  {
+    "text": "mostly they've been focused on longer",
+    "start": 13.12,
+    "duration": 3.84
+  },
+  {
+    "text": "chains of thought and thinking budgets.",
+    "start": 15.04,
+    "duration": 3.36
+  },
+  {
+    "text": "And while those models are great,",
+    "start": 16.96,
+    "duration": 3.36
+  },
+  {
+    "text": "they'll happily sit there for multiple",
+    "start": 18.4,
+    "duration": 3.76
+  },
+  {
+    "text": "minutes before they even give you an",
+    "start": 20.32,
+    "duration": 3.52
+  },
+  {
+    "text": "answer back. And of course, if you",
+    "start": 22.16,
+    "duration": 3.44
+  },
+  {
+    "text": "wanted to see that chain of thought, the",
+    "start": 23.84,
+    "duration": 3.279
+  },
+  {
+    "text": "Frontier Labs are not going to let you",
+    "start": 25.6,
+    "duration": 2.96
+  },
+  {
+    "text": "see it, even though you're paying for",
+    "start": 27.119,
+    "duration": 3.681
+  },
+  {
+    "text": "it. So if you read Daniel Canman's book,",
+    "start": 28.56,
+    "duration": 4.88
+  },
+  {
+    "text": "thinking fast and slow, you know that",
+    "start": 30.8,
+    "duration": 4.8
+  },
+  {
+    "text": "all this kind of reasoning stuff is",
+    "start": 33.44,
+    "duration": 4.56
+  },
+  {
+    "text": "system two thinking. It's slow,",
+    "start": 35.6,
+    "duration": 4.56
+  },
+  {
+    "text": "deliberate, effortful. Whereas system",
+    "start": 38.0,
+    "duration": 3.84
+  },
+  {
+    "text": "one, on the other hand, is fast,",
+    "start": 40.16,
+    "duration": 4.079
+  },
+  {
+    "text": "intuitive, sort of like a gut call that",
+    "start": 41.84,
+    "duration": 4.32
+  },
+  {
+    "text": "you make really quickly without any",
+    "start": 44.239,
+    "duration": 3.681
+  },
+  {
+    "text": "deliberation. And here's where the",
+    "start": 46.16,
+    "duration": 3.28
+  },
+  {
+    "text": "subject of today's video, I think, is",
+    "start": 47.92,
+    "duration": 3.76
+  },
+  {
+    "text": "really interesting. Most decisions that",
+    "start": 49.44,
+    "duration": 4.16
+  },
+  {
+    "text": "actually sit inside of software aren't",
+    "start": 51.68,
+    "duration": 4.0
+  },
+  {
+    "text": "system 2 problems. They're often just",
+    "start": 53.6,
+    "duration": 4.479
+  },
+  {
+    "text": "really simple classification problems.",
+    "start": 55.68,
+    "duration": 4.559
+  },
+  {
+    "text": "What kind of support ticket is this? Is",
+    "start": 58.079,
+    "duration": 4.561
+  },
+  {
+    "text": "this message urgent? Did an agent's",
+    "start": 60.239,
+    "duration": 4.801
+  },
+  {
+    "text": "output actually break a rule? You",
+    "start": 62.64,
+    "duration": 4.799
+  },
+  {
+    "text": "shouldn't even need 30 seconds for that",
+    "start": 65.04,
+    "duration": 4.88
+  },
+  {
+    "text": "kind of thinking, let alone the sort of",
+    "start": 67.439,
+    "duration": 4.241
+  },
+  {
+    "text": "minutes that some of the models end up",
+    "start": 69.92,
+    "duration": 3.519
+  },
+  {
+    "text": "taking. And while it's great that you",
+    "start": 71.68,
+    "duration": 3.759
+  },
+  {
+    "text": "can ask one of these reasoning models",
+    "start": 73.439,
+    "duration": 4.241
+  },
+  {
+    "text": "for a one-word answer and then wrap it",
+    "start": 75.439,
+    "duration": 5.121
+  },
+  {
+    "text": "in JSON, you're paying a huge latency",
+    "start": 77.68,
+    "duration": 5.6
+  },
+  {
+    "text": "cost for generating all that text before",
+    "start": 80.56,
+    "duration": 5.04
+  },
+  {
+    "text": "you get your one-word label back. So",
+    "start": 83.28,
+    "duration": 3.92
+  },
+  {
+    "text": "this week, a new lab that's just come",
+    "start": 85.6,
+    "duration": 3.68
+  },
+  {
+    "text": "out of stealth has gone the complete",
+    "start": 87.2,
+    "duration": 4.48
+  },
+  {
+    "text": "opposite way of the reasoning models.",
+    "start": 89.28,
+    "duration": 3.76
+  },
+  {
+    "text": "They've built a model that you can't",
+    "start": 91.68,
+    "duration": 3.759
+  },
+  {
+    "text": "chat with at all, let alone have it",
+    "start": 93.04,
+    "duration": 4.24
+  },
+  {
+    "text": "reason and deliberate over things for a",
+    "start": 95.439,
+    "duration": 4.081
+  },
+  {
+    "text": "long time. It just doesn't generate text",
+    "start": 97.28,
+    "duration": 4.4
+  },
+  {
+    "text": "in the standard auto reggressive way.",
+    "start": 99.52,
+    "duration": 3.76
+  },
+  {
+    "text": "And the funny thing actually enforcing",
+    "start": 101.68,
+    "duration": 3.759
+  },
+  {
+    "text": "that is that the output tokens of this",
+    "start": 103.28,
+    "duration": 4.64
+  },
+  {
+    "text": "model are actually free. But actually",
+    "start": 105.439,
+    "duration": 4.881
+  },
+  {
+    "text": "working out why those tokens are free",
+    "start": 107.92,
+    "duration": 4.08
+  },
+  {
+    "text": "might be the thing that actually tells",
+    "start": 110.32,
+    "duration": 4.0
+  },
+  {
+    "text": "us a lot about how this thing is built.",
+    "start": 112.0,
+    "duration": 3.6
+  },
+  {
+    "text": "All right. So the company is called",
+    "start": 114.32,
+    "duration": 4.159
+  },
+  {
+    "text": "Typesafe AI and the model is called Jev.",
+    "start": 115.6,
+    "duration": 5.119
+  },
+  {
+    "text": "So the founder is Dio Almida and",
+    "start": 118.479,
+    "duration": 4.161
+  },
+  {
+    "text": "actually he was at OpenAI for quite a",
+    "start": 120.719,
+    "duration": 4.0
+  },
+  {
+    "text": "while before and funnily enough was one",
+    "start": 122.64,
+    "duration": 4.799
+  },
+  {
+    "text": "of the top authors on the instruct GPT",
+    "start": 124.719,
+    "duration": 4.4
+  },
+  {
+    "text": "paper. That was the paper that actually",
+    "start": 127.439,
+    "duration": 3.361
+  },
+  {
+    "text": "led to the whole sort of instruction",
+    "start": 129.119,
+    "duration": 3.441
+  },
+  {
+    "text": "tuning of models which has just",
+    "start": 130.8,
+    "duration": 4.159
+  },
+  {
+    "text": "progressed onwards from that to the",
+    "start": 132.56,
+    "duration": 4.56
+  },
+  {
+    "text": "reasoning models that we see today. So",
+    "start": 134.959,
+    "duration": 4.0
+  },
+  {
+    "text": "if you don't know that paper basically",
+    "start": 137.12,
+    "duration": 4.4
+  },
+  {
+    "text": "took a raw language model basically like",
+    "start": 138.959,
+    "duration": 4.801
+  },
+  {
+    "text": "what we would call a base model now and",
+    "start": 141.52,
+    "duration": 4.88
+  },
+  {
+    "text": "actually made it follow instructions and",
+    "start": 143.76,
+    "duration": 5.76
+  },
+  {
+    "text": "out of all that research came chat GPT.",
+    "start": 146.4,
+    "duration": 4.8
+  },
+  {
+    "text": "So this is someone who clearly helped",
+    "start": 149.52,
+    "duration": 4.32
+  },
+  {
+    "text": "make models good at talking to people.",
+    "start": 151.2,
+    "duration": 4.0
+  },
+  {
+    "text": "And the question that he says that's",
+    "start": 153.84,
+    "duration": 3.119
+  },
+  {
+    "text": "been bugging him for the last four years",
+    "start": 155.2,
+    "duration": 4.0
+  },
+  {
+    "text": "is that as models have become superhuman",
+    "start": 156.959,
+    "duration": 4.961
+  },
+  {
+    "text": "at chat where's all the automation here?",
+    "start": 159.2,
+    "duration": 5.119
+  },
+  {
+    "text": "And interestingly, he's saying that chat",
+    "start": 161.92,
+    "duration": 4.88
+  },
+  {
+    "text": "is the wrong interface for software.",
+    "start": 164.319,
+    "duration": 4.241
+  },
+  {
+    "text": "Software doesn't want a paragraph. It",
+    "start": 166.8,
+    "duration": 3.84
+  },
+  {
+    "text": "wants a value that it can basically use",
+    "start": 168.56,
+    "duration": 4.399
+  },
+  {
+    "text": "straight away. Now, Dio and the rest of",
+    "start": 170.64,
+    "duration": 4.56
+  },
+  {
+    "text": "the team at Typescafe AI have spent the",
+    "start": 172.959,
+    "duration": 4.481
+  },
+  {
+    "text": "last two years in stealth working on",
+    "start": 175.2,
+    "duration": 4.48
+  },
+  {
+    "text": "this model called Jev. All right. So,",
+    "start": 177.44,
+    "duration": 5.04
+  },
+  {
+    "text": "what is Jev? So, they specifically refer",
+    "start": 179.68,
+    "duration": 5.36
+  },
+  {
+    "text": "to this as a system one model. And",
+    "start": 182.48,
+    "duration": 4.24
+  },
+  {
+    "text": "probably the easiest way of looking at",
+    "start": 185.04,
+    "duration": 3.76
+  },
+  {
+    "text": "this is it's kind of like a function",
+    "start": 186.72,
+    "duration": 4.64
+  },
+  {
+    "text": "call. You pass in two things. The first",
+    "start": 188.8,
+    "duration": 4.719
+  },
+  {
+    "text": "is what they call the state which is",
+    "start": 191.36,
+    "duration": 4.48
+  },
+  {
+    "text": "just your unstructured text or data and",
+    "start": 193.519,
+    "duration": 3.681
+  },
+  {
+    "text": "that could be anything that you want",
+    "start": 195.84,
+    "duration": 2.8
+  },
+  {
+    "text": "classified. It could be a support",
+    "start": 197.2,
+    "duration": 3.6
+  },
+  {
+    "text": "ticket, could be an agent trace, it",
+    "start": 198.64,
+    "duration": 4.64
+  },
+  {
+    "text": "could be a log file, etc. And then the",
+    "start": 200.8,
+    "duration": 4.4
+  },
+  {
+    "text": "second thing that you pass in is a set",
+    "start": 203.28,
+    "duration": 4.4
+  },
+  {
+    "text": "of typed questions. And there are only",
+    "start": 205.2,
+    "duration": 4.0
+  },
+  {
+    "text": "three kinds of questions that you can",
+    "start": 207.68,
+    "duration": 3.76
+  },
+  {
+    "text": "ask here. There's choice where you give",
+    "start": 209.2,
+    "duration": 4.959
+  },
+  {
+    "text": "it a list of options and it picks one.",
+    "start": 211.44,
+    "duration": 5.04
+  },
+  {
+    "text": "There's score where it rates something",
+    "start": 214.159,
+    "duration": 4.72
+  },
+  {
+    "text": "on a scale that you defined. And then",
+    "start": 216.48,
+    "duration": 4.24
+  },
+  {
+    "text": "there's one called null, which is a yes",
+    "start": 218.879,
+    "duration": 4.161
+  },
+  {
+    "text": "or no question where it basically comes",
+    "start": 220.72,
+    "duration": 4.4
+  },
+  {
+    "text": "back with a probability that the answer",
+    "start": 223.04,
+    "duration": 4.32
+  },
+  {
+    "text": "is yes. So if you look at what comes",
+    "start": 225.12,
+    "duration": 4.88
+  },
+  {
+    "text": "back here, there's no text to pass for",
+    "start": 227.36,
+    "duration": 4.4
+  },
+  {
+    "text": "the choice question. You get the option",
+    "start": 230.0,
+    "duration": 4.0
+  },
+  {
+    "text": "it picked and also a probability of",
+    "start": 231.76,
+    "duration": 4.32
+  },
+  {
+    "text": "every other option. And I think this is",
+    "start": 234.0,
+    "duration": 3.36
+  },
+  {
+    "text": "really kind of interesting because this",
+    "start": 236.08,
+    "duration": 3.04
+  },
+  {
+    "text": "is one of the things that a lot of us",
+    "start": 237.36,
+    "duration": 4.48
+  },
+  {
+    "text": "have kind of been trying to fake with",
+    "start": 239.12,
+    "duration": 5.36
+  },
+  {
+    "text": "JSON where we ask models to do stuff and",
+    "start": 241.84,
+    "duration": 4.88
+  },
+  {
+    "text": "return JSON output. But in many ways,",
+    "start": 244.48,
+    "duration": 3.44
+  },
+  {
+    "text": "the number that you're getting back",
+    "start": 246.72,
+    "duration": 3.92
+  },
+  {
+    "text": "there is just generated text. And if you",
+    "start": 247.92,
+    "duration": 4.959
+  },
+  {
+    "text": "look at things as LLM as a judge, you'll",
+    "start": 250.64,
+    "duration": 5.2
+  },
+  {
+    "text": "often see that that text skews in a very",
+    "start": 252.879,
+    "duration": 5.521
+  },
+  {
+    "text": "certain way. I.e. it's just a model",
+    "start": 255.84,
+    "duration": 5.76
+  },
+  {
+    "text": "writing the character 0.9 rather than",
+    "start": 258.4,
+    "duration": 4.72
+  },
+  {
+    "text": "actually a real representation of",
+    "start": 261.6,
+    "duration": 3.44
+  },
+  {
+    "text": "probability. The way they want you to",
+    "start": 263.12,
+    "duration": 4.16
+  },
+  {
+    "text": "use this model is to think about it as",
+    "start": 265.04,
+    "duration": 5.04
+  },
+  {
+    "text": "being a smart if statement. You don't",
+    "start": 267.28,
+    "duration": 5.199
+  },
+  {
+    "text": "ask one big fuzzy question like rate",
+    "start": 270.08,
+    "duration": 4.96
+  },
+  {
+    "text": "this startup pitch. You ask small gut",
+    "start": 272.479,
+    "duration": 4.481
+  },
+  {
+    "text": "questions in there. What's the",
+    "start": 275.04,
+    "duration": 4.32
+  },
+  {
+    "text": "feasibility of this? What type of market",
+    "start": 276.96,
+    "duration": 4.48
+  },
+  {
+    "text": "are they going after? And of course, if",
+    "start": 279.36,
+    "duration": 3.76
+  },
+  {
+    "text": "you're asking a choice question, you",
+    "start": 281.44,
+    "duration": 3.6
+  },
+  {
+    "text": "have to actually give it the options to",
+    "start": 283.12,
+    "duration": 3.84
+  },
+  {
+    "text": "choose from. Then the cool thing is that",
+    "start": 285.04,
+    "duration": 4.4
+  },
+  {
+    "text": "you can actually combine all of those in",
+    "start": 286.96,
+    "duration": 4.799
+  },
+  {
+    "text": "normal code. So when something changes,",
+    "start": 289.44,
+    "duration": 3.68
+  },
+  {
+    "text": "you can just change a number in your",
+    "start": 291.759,
+    "duration": 3.281
+  },
+  {
+    "text": "code. You don't need to go and tweak any",
+    "start": 293.12,
+    "duration": 3.92
+  },
+  {
+    "text": "prompts or anything. All right. So what",
+    "start": 295.04,
+    "duration": 4.719
+  },
+  {
+    "text": "I've done is basically just code up a",
+    "start": 297.04,
+    "duration": 6.0
+  },
+  {
+    "text": "little demo app to try this out. I'm",
+    "start": 299.759,
+    "duration": 5.601
+  },
+  {
+    "text": "using the model on open router. So, this",
+    "start": 303.04,
+    "duration": 4.32
+  },
+  {
+    "text": "is a crazy sort of price model, right?",
+    "start": 305.36,
+    "duration": 4.559
+  },
+  {
+    "text": "You're looking at 4.2 cents per million",
+    "start": 307.36,
+    "duration": 6.48
+  },
+  {
+    "text": "tokens in and 0 cents per million tokens",
+    "start": 309.919,
+    "duration": 5.921
+  },
+  {
+    "text": "out. And you can see if we come in here,",
+    "start": 313.84,
+    "duration": 4.24
+  },
+  {
+    "text": "they've got some code to actually how to",
+    "start": 315.84,
+    "duration": 5.84
+  },
+  {
+    "text": "call it on using the open AI uh API",
+    "start": 318.08,
+    "duration": 4.959
+  },
+  {
+    "text": "endpoints. And so, we've been playing",
+    "start": 321.68,
+    "duration": 2.56
+  },
+  {
+    "text": "around for a couple of hours with",
+    "start": 323.039,
+    "duration": 3.041
+  },
+  {
+    "text": "different kinds of demos and trying out",
+    "start": 324.24,
+    "duration": 3.76
+  },
+  {
+    "text": "different things. So, the first key",
+    "start": 326.08,
+    "duration": 4.08
+  },
+  {
+    "text": "thing here is that there are three kinds",
+    "start": 328.0,
+    "duration": 3.84
+  },
+  {
+    "text": "of things that you can do, right? One of",
+    "start": 330.16,
+    "duration": 4.24
+  },
+  {
+    "text": "them is a choice. So you can see here",
+    "start": 331.84,
+    "duration": 4.0
+  },
+  {
+    "text": "I've got some text that I'm going to",
+    "start": 334.4,
+    "duration": 4.079
+  },
+  {
+    "text": "pass in and then it's got a choice of",
+    "start": 335.84,
+    "duration": 5.52
+  },
+  {
+    "text": "five different classes out here. And",
+    "start": 338.479,
+    "duration": 6.241
+  },
+  {
+    "text": "it's very good at being able to detect",
+    "start": 341.36,
+    "duration": 5.6
+  },
+  {
+    "text": "which of these is the right one. And so",
+    "start": 344.72,
+    "duration": 3.759
+  },
+  {
+    "text": "what it will do if we look at the raw",
+    "start": 346.96,
+    "duration": 4.32
+  },
+  {
+    "text": "output here is that it basically has a",
+    "start": 348.479,
+    "duration": 5.28
+  },
+  {
+    "text": "type choice. In this case the choice was",
+    "start": 351.28,
+    "duration": 4.4
+  },
+  {
+    "text": "French. And then it gives us the",
+    "start": 353.759,
+    "duration": 4.081
+  },
+  {
+    "text": "probabilities for each of these and a",
+    "start": 355.68,
+    "duration": 3.84
+  },
+  {
+    "text": "confidence score. And you can see that",
+    "start": 357.84,
+    "duration": 3.6
+  },
+  {
+    "text": "it did that pretty quickly. So, I'm",
+    "start": 359.52,
+    "duration": 3.519
+  },
+  {
+    "text": "probably on the opposite side of the",
+    "start": 361.44,
+    "duration": 3.44
+  },
+  {
+    "text": "world to where the model is actually",
+    "start": 363.039,
+    "duration": 4.16
+  },
+  {
+    "text": "being hosted, but you'll see that it's",
+    "start": 364.88,
+    "duration": 5.439
+  },
+  {
+    "text": "very quick at being able to respond even",
+    "start": 367.199,
+    "duration": 5.84
+  },
+  {
+    "text": "for things like this where I wanted to",
+    "start": 370.319,
+    "duration": 4.88
+  },
+  {
+    "text": "try it on Thai, but using with Thai",
+    "start": 373.039,
+    "duration": 3.44
+  },
+  {
+    "text": "characters, it's going to give it its",
+    "start": 375.199,
+    "duration": 2.801
+  },
+  {
+    "text": "way straight away that it's the Thai",
+    "start": 376.479,
+    "duration": 3.361
+  },
+  {
+    "text": "language. So, I asked it to basically",
+    "start": 378.0,
+    "duration": 4.8
+  },
+  {
+    "text": "make like a romanized version of that.",
+    "start": 379.84,
+    "duration": 5.04
+  },
+  {
+    "text": "And you could see that even that it has",
+    "start": 382.8,
+    "duration": 4.0
+  },
+  {
+    "text": "no problems being able to get that",
+    "start": 384.88,
+    "duration": 4.159
+  },
+  {
+    "text": "right. The second thing that you can do",
+    "start": 386.8,
+    "duration": 4.959
+  },
+  {
+    "text": "with this is you can get it to give a",
+    "start": 389.039,
+    "duration": 5.201
+  },
+  {
+    "text": "score. So here you can see that we're",
+    "start": 391.759,
+    "duration": 5.201
+  },
+  {
+    "text": "giving a score between zero and two.",
+    "start": 394.24,
+    "duration": 4.079
+  },
+  {
+    "text": "We're sort of doing sentiment here.",
+    "start": 396.96,
+    "duration": 3.519
+  },
+  {
+    "text": "We're doing a classification task again.",
+    "start": 398.319,
+    "duration": 4.241
+  },
+  {
+    "text": "We've got sentiment coming out. And if",
+    "start": 400.479,
+    "duration": 4.72
+  },
+  {
+    "text": "we go for positive sentiment, you'll see",
+    "start": 402.56,
+    "duration": 5.12
+  },
+  {
+    "text": "it comes out two of two. If we go for",
+    "start": 405.199,
+    "duration": 6.401
+  },
+  {
+    "text": "negative, zero. If we go for mixed, it's",
+    "start": 407.68,
+    "duration": 5.76
+  },
+  {
+    "text": "pretty good at being able to do that. I",
+    "start": 411.6,
+    "duration": 4.56
+  },
+  {
+    "text": "can see each time this is costing me",
+    "start": 413.44,
+    "duration": 5.72
+  },
+  {
+    "text": "0.0014",
+    "start": 416.16,
+    "duration": 3.0
+  },
+  {
+    "text": "of a cent right in here. If you can",
+    "start": 419.599,
+    "duration": 5.921
+  },
+  {
+    "text": "break down what you're trying to do to",
+    "start": 422.88,
+    "duration": 6.0
+  },
+  {
+    "text": "lots of different classifications,",
+    "start": 425.52,
+    "duration": 6.16
+  },
+  {
+    "text": "you really can extremely cheaply do a",
+    "start": 428.88,
+    "duration": 4.719
+  },
+  {
+    "text": "lot of stuff with this. And you can see",
+    "start": 431.68,
+    "duration": 3.6
+  },
+  {
+    "text": "in this case where I tried to make it a",
+    "start": 433.599,
+    "duration": 3.121
+  },
+  {
+    "text": "little bit more positive than in the",
+    "start": 435.28,
+    "duration": 4.88
+  },
+  {
+    "text": "middle, I it does change coming back",
+    "start": 436.72,
+    "duration": 5.68
+  },
+  {
+    "text": "each time. So it still is a stochcastic",
+    "start": 440.16,
+    "duration": 4.479
+  },
+  {
+    "text": "process going on here. And we can see",
+    "start": 442.4,
+    "duration": 5.12
+  },
+  {
+    "text": "the confidence is less than before. Each",
+    "start": 444.639,
+    "duration": 4.321
+  },
+  {
+    "text": "time I ping it, I'm getting something",
+    "start": 447.52,
+    "duration": 4.239
+  },
+  {
+    "text": "slightly different but pretty close to",
+    "start": 448.96,
+    "duration": 5.519
+  },
+  {
+    "text": "the same sort of ballpark scores there.",
+    "start": 451.759,
+    "duration": 4.321
+  },
+  {
+    "text": "When we look at the API for that, you",
+    "start": 454.479,
+    "duration": 3.28
+  },
+  {
+    "text": "can see that okay, the probabilities",
+    "start": 456.08,
+    "duration": 3.36
+  },
+  {
+    "text": "that it's coming back. So you can see in",
+    "start": 457.759,
+    "duration": 3.44
+  },
+  {
+    "text": "this case, we've passed in a score,",
+    "start": 459.44,
+    "duration": 4.0
+  },
+  {
+    "text": "we've got that back coming out of there.",
+    "start": 461.199,
+    "duration": 4.161
+  },
+  {
+    "text": "So scoring is a really nice function in",
+    "start": 463.44,
+    "duration": 3.68
+  },
+  {
+    "text": "there. And then lastly, we've got the",
+    "start": 465.36,
+    "duration": 4.64
+  },
+  {
+    "text": "true or false or the yes no kind of",
+    "start": 467.12,
+    "duration": 5.199
+  },
+  {
+    "text": "probabilities here. So this is a null",
+    "start": 470.0,
+    "duration": 3.84
+  },
+  {
+    "text": "and it's basically going to give back a",
+    "start": 472.319,
+    "duration": 5.041
+  },
+  {
+    "text": "probability for what we put in. Now if I",
+    "start": 473.84,
+    "duration": 5.44
+  },
+  {
+    "text": "ask it something simple like that, it",
+    "start": 477.36,
+    "duration": 5.6
+  },
+  {
+    "text": "comes back 87% yes. Is this text asking",
+    "start": 479.28,
+    "duration": 5.68
+  },
+  {
+    "text": "a question? Okay, the answer would be no",
+    "start": 482.96,
+    "duration": 4.56
+  },
+  {
+    "text": "here. So you can see that it's 2% yes.",
+    "start": 484.96,
+    "duration": 4.799
+  },
+  {
+    "text": "So basically it's no, right? You could",
+    "start": 487.52,
+    "duration": 3.76
+  },
+  {
+    "text": "kind of think of this as being flattened",
+    "start": 489.759,
+    "duration": 3.681
+  },
+  {
+    "text": "out by a sigmoid function. So you've got",
+    "start": 491.28,
+    "duration": 4.56
+  },
+  {
+    "text": "zero to one coming out of this. And even",
+    "start": 493.44,
+    "duration": 4.159
+  },
+  {
+    "text": "if we do things like where okay, we've",
+    "start": 495.84,
+    "duration": 3.6
+  },
+  {
+    "text": "got a question but we've got no question",
+    "start": 497.599,
+    "duration": 4.801
+  },
+  {
+    "text": "mark, it's very confident that that is",
+    "start": 499.44,
+    "duration": 4.4
+  },
+  {
+    "text": "still a question without a question",
+    "start": 502.4,
+    "duration": 3.199
+  },
+  {
+    "text": "mark. So it's not like it's just looking",
+    "start": 503.84,
+    "duration": 3.68
+  },
+  {
+    "text": "for a question mark there. And you can",
+    "start": 505.599,
+    "duration": 4.0
+  },
+  {
+    "text": "see different kinds of questions will",
+    "start": 507.52,
+    "duration": 4.32
+  },
+  {
+    "text": "get different responses. So",
+    "start": 509.599,
+    "duration": 4.081
+  },
+  {
+    "text": "interestingly, if I just ask it, can you",
+    "start": 511.84,
+    "duration": 4.48
+  },
+  {
+    "text": "help? It's a lot less sure if it can",
+    "start": 513.68,
+    "duration": 5.039
+  },
+  {
+    "text": "because I haven't been specific. But if",
+    "start": 516.32,
+    "duration": 5.04
+  },
+  {
+    "text": "I ask it, can you help find my cat?",
+    "start": 518.719,
+    "duration": 5.44
+  },
+  {
+    "text": "Well, then it's 95% sure that it can do",
+    "start": 521.36,
+    "duration": 4.72
+  },
+  {
+    "text": "it. And if I just change one word in",
+    "start": 524.159,
+    "duration": 5.201
+  },
+  {
+    "text": "there to can you help me feed my cat, it",
+    "start": 526.08,
+    "duration": 5.439
+  },
+  {
+    "text": "goes back down a bit. So, it is",
+    "start": 529.36,
+    "duration": 4.24
+  },
+  {
+    "text": "interesting how it actually does this.",
+    "start": 531.519,
+    "duration": 4.241
+  },
+  {
+    "text": "You will see that like again, this is",
+    "start": 533.6,
+    "duration": 3.84
+  },
+  {
+    "text": "still a stochastic process. It comes",
+    "start": 535.76,
+    "duration": 4.079
+  },
+  {
+    "text": "back slightly different each time, but",
+    "start": 537.44,
+    "duration": 5.44
+  },
+  {
+    "text": "it is pretty consistent of you either",
+    "start": 539.839,
+    "duration": 5.201
+  },
+  {
+    "text": "being able to say one thing or the other",
+    "start": 542.88,
+    "duration": 3.76
+  },
+  {
+    "text": "thing. And you can see if I just give it",
+    "start": 545.04,
+    "duration": 4.0
+  },
+  {
+    "text": "two words, then it starts losing its",
+    "start": 546.64,
+    "duration": 4.879
+  },
+  {
+    "text": "confidence about this. So, it does seem",
+    "start": 549.04,
+    "duration": 4.64
+  },
+  {
+    "text": "to me the longer that the input that you",
+    "start": 551.519,
+    "duration": 5.44
+  },
+  {
+    "text": "put in, the more confident it gets with",
+    "start": 553.68,
+    "duration": 5.44
+  },
+  {
+    "text": "its responses out. All right. Now,",
+    "start": 556.959,
+    "duration": 3.841
+  },
+  {
+    "text": "looking at some sort of more practical",
+    "start": 559.12,
+    "duration": 3.92
+  },
+  {
+    "text": "kinds of things that we could do here,",
+    "start": 560.8,
+    "duration": 4.0
+  },
+  {
+    "text": "you can see that we could put in like a",
+    "start": 563.04,
+    "duration": 3.52
+  },
+  {
+    "text": "message of, I was charged twice for an",
+    "start": 564.8,
+    "duration": 4.32
+  },
+  {
+    "text": "order. Please refund the duper. Get it",
+    "start": 566.56,
+    "duration": 4.0
+  },
+  {
+    "text": "to work out which team it's going to",
+    "start": 569.12,
+    "duration": 4.56
+  },
+  {
+    "text": "route it to. Here it's billing. Kind of",
+    "start": 570.56,
+    "duration": 6.48
+  },
+  {
+    "text": "obvious. Sales one, it gets 100% sales.",
+    "start": 573.68,
+    "duration": 4.64
+  },
+  {
+    "text": "What if we do something a little bit",
+    "start": 577.04,
+    "duration": 3.76
+  },
+  {
+    "text": "more ambiguous? You can see now it's not",
+    "start": 578.32,
+    "duration": 3.92
+  },
+  {
+    "text": "very confident. It's actually coming",
+    "start": 580.8,
+    "duration": 4.08
+  },
+  {
+    "text": "back that it's unclear as as the class,",
+    "start": 582.24,
+    "duration": 4.159
+  },
+  {
+    "text": "but it's still thinking that this is",
+    "start": 584.88,
+    "duration": 3.6
+  },
+  {
+    "text": "more of a technical kind of thing. And",
+    "start": 586.399,
+    "duration": 3.681
+  },
+  {
+    "text": "you can see that each time we run that,",
+    "start": 588.48,
+    "duration": 3.76
+  },
+  {
+    "text": "we do get a slightly different response,",
+    "start": 590.08,
+    "duration": 3.92
+  },
+  {
+    "text": "you know, going through this. Now, on",
+    "start": 592.24,
+    "duration": 3.279
+  },
+  {
+    "text": "top of these, we're actually doing",
+    "start": 594.0,
+    "duration": 3.44
+  },
+  {
+    "text": "multiple things at the same time. So,",
+    "start": 595.519,
+    "duration": 4.32
+  },
+  {
+    "text": "you can see that we've also got a null",
+    "start": 597.44,
+    "duration": 5.12
+  },
+  {
+    "text": "in here for was a refund requested.",
+    "start": 599.839,
+    "duration": 4.56
+  },
+  {
+    "text": "Obviously, if I select this, the answer",
+    "start": 602.56,
+    "duration": 5.2
+  },
+  {
+    "text": "is yes. Is it sort of timesensitive?",
+    "start": 604.399,
+    "duration": 5.041
+  },
+  {
+    "text": "Right? In this case, it's saying",
+    "start": 607.76,
+    "duration": 4.72
+  },
+  {
+    "text": "timesensitive 7%. If I change that to",
+    "start": 609.44,
+    "duration": 5.839
+  },
+  {
+    "text": "please refund the duplicate charge right",
+    "start": 612.48,
+    "duration": 4.72
+  },
+  {
+    "text": "now instead of just right now, you can",
+    "start": 615.279,
+    "duration": 3.841
+  },
+  {
+    "text": "see the time sensitive is jumping up to",
+    "start": 617.2,
+    "duration": 5.36
+  },
+  {
+    "text": "sort of like 60 70% in this case. We can",
+    "start": 619.12,
+    "duration": 5.839
+  },
+  {
+    "text": "even try it with things like injecting",
+    "start": 622.56,
+    "duration": 4.88
+  },
+  {
+    "text": "stuff in there. So, doing any sort of",
+    "start": 624.959,
+    "duration": 4.721
+  },
+  {
+    "text": "thing where someone's trying to do a",
+    "start": 627.44,
+    "duration": 4.24
+  },
+  {
+    "text": "prompt injection or something like that.",
+    "start": 629.68,
+    "duration": 3.92
+  },
+  {
+    "text": "This seems to do pretty well at being",
+    "start": 631.68,
+    "duration": 5.2
+  },
+  {
+    "text": "able to get that kind of thing. Sarcasm",
+    "start": 633.6,
+    "duration": 5.04
+  },
+  {
+    "text": "is also something that it seems to be",
+    "start": 636.88,
+    "duration": 3.84
+  },
+  {
+    "text": "doing an okay job at it. It would be",
+    "start": 638.64,
+    "duration": 4.56
+  },
+  {
+    "text": "interesting also to test it on humor and",
+    "start": 640.72,
+    "duration": 4.239
+  },
+  {
+    "text": "other kind of things, but it is good",
+    "start": 643.2,
+    "duration": 4.56
+  },
+  {
+    "text": "that it's not being tricked by a lot of",
+    "start": 644.959,
+    "duration": 4.161
+  },
+  {
+    "text": "different things that normally would",
+    "start": 647.76,
+    "duration": 3.44
+  },
+  {
+    "text": "trick this kind of thing. Other tasks",
+    "start": 649.12,
+    "duration": 3.92
+  },
+  {
+    "text": "that you can get it to do is things like",
+    "start": 651.2,
+    "duration": 3.759
+  },
+  {
+    "text": "code reviews, like where you can",
+    "start": 653.04,
+    "duration": 4.0
+  },
+  {
+    "text": "basically ask it, is something safe? Is",
+    "start": 654.959,
+    "duration": 4.241
+  },
+  {
+    "text": "something not safe? It seems to do a",
+    "start": 657.04,
+    "duration": 4.08
+  },
+  {
+    "text": "good job at that. doing things like",
+    "start": 659.2,
+    "duration": 4.48
+  },
+  {
+    "text": "classification on different types of",
+    "start": 661.12,
+    "duration": 5.12
+  },
+  {
+    "text": "content. That seems to work really well.",
+    "start": 663.68,
+    "duration": 4.399
+  },
+  {
+    "text": "You can see here it's able to discover",
+    "start": 666.24,
+    "duration": 4.56
+  },
+  {
+    "text": "PII information, personal identifiable",
+    "start": 668.079,
+    "duration": 4.801
+  },
+  {
+    "text": "information here. Does a good job at",
+    "start": 670.8,
+    "duration": 3.76
+  },
+  {
+    "text": "that kind of thing. It does a good job",
+    "start": 672.88,
+    "duration": 4.0
+  },
+  {
+    "text": "at sort of spam detection as well. So",
+    "start": 674.56,
+    "duration": 4.24
+  },
+  {
+    "text": "the fourth example here is looking at",
+    "start": 676.88,
+    "duration": 4.8
+  },
+  {
+    "text": "agent tool selection. So this is a",
+    "start": 678.8,
+    "duration": 5.279
+  },
+  {
+    "text": "little bit like the cactus model that we",
+    "start": 681.68,
+    "duration": 4.8
+  },
+  {
+    "text": "looked at a while ago in that it's doing",
+    "start": 684.079,
+    "duration": 4.721
+  },
+  {
+    "text": "some kind of sort of function calling.",
+    "start": 686.48,
+    "duration": 3.76
+  },
+  {
+    "text": "But it's important to understand here",
+    "start": 688.8,
+    "duration": 3.84
+  },
+  {
+    "text": "that it's not actually extracting",
+    "start": 690.24,
+    "duration": 5.279
+  },
+  {
+    "text": "anything out and passing it to the tool,",
+    "start": 692.64,
+    "duration": 4.639
+  },
+  {
+    "text": "right? It's just telling us which tool",
+    "start": 695.519,
+    "duration": 5.44
+  },
+  {
+    "text": "to use as opposed to getting the right",
+    "start": 697.279,
+    "duration": 6.641
+  },
+  {
+    "text": "arguments out to pass to the tool. So in",
+    "start": 700.959,
+    "duration": 4.641
+  },
+  {
+    "text": "that sense, function calling models are",
+    "start": 703.92,
+    "duration": 3.84
+  },
+  {
+    "text": "still able to basically generate out",
+    "start": 705.6,
+    "duration": 4.08
+  },
+  {
+    "text": "what should be the input going to the",
+    "start": 707.76,
+    "duration": 3.68
+  },
+  {
+    "text": "function. Last up, one of the things",
+    "start": 709.68,
+    "duration": 3.04
+  },
+  {
+    "text": "that I thought was really interesting to",
+    "start": 711.44,
+    "duration": 4.8
+  },
+  {
+    "text": "test it is stringing actions together,",
+    "start": 712.72,
+    "duration": 6.0
+  },
+  {
+    "text": "right? So where we basically give it",
+    "start": 716.24,
+    "duration": 5.2
+  },
+  {
+    "text": "something and we then want to basically",
+    "start": 718.72,
+    "duration": 5.52
+  },
+  {
+    "text": "run a number of different tasks over",
+    "start": 721.44,
+    "duration": 5.519
+  },
+  {
+    "text": "this to see how long does it take, how",
+    "start": 724.24,
+    "duration": 5.12
+  },
+  {
+    "text": "does it actually process these. So,",
+    "start": 726.959,
+    "duration": 5.201
+  },
+  {
+    "text": "here's 20 different tasks going through",
+    "start": 729.36,
+    "duration": 4.88
+  },
+  {
+    "text": "and you can see that it's flying along.",
+    "start": 732.16,
+    "duration": 4.32
+  },
+  {
+    "text": "Now, I could have done them in parallel",
+    "start": 734.24,
+    "duration": 3.92
+  },
+  {
+    "text": "for some of them at least, but you can",
+    "start": 736.48,
+    "duration": 3.039
+  },
+  {
+    "text": "see that just going through it like",
+    "start": 738.16,
+    "duration": 4.32
+  },
+  {
+    "text": "that, we've gone through all different",
+    "start": 739.519,
+    "duration": 5.601
+  },
+  {
+    "text": "20 tasks in here, gotten the answers",
+    "start": 742.48,
+    "duration": 5.76
+  },
+  {
+    "text": "out, gotten the results back for these,",
+    "start": 745.12,
+    "duration": 6.959
+  },
+  {
+    "text": "and it's cost just over 12th of 1 cent.",
+    "start": 748.24,
+    "duration": 5.599
+  },
+  {
+    "text": "I really feel like this is where you're",
+    "start": 752.079,
+    "duration": 3.601
+  },
+  {
+    "text": "going to find really interesting things,",
+    "start": 753.839,
+    "duration": 4.081
+  },
+  {
+    "text": "right? when you can string lots of",
+    "start": 755.68,
+    "duration": 5.2
+  },
+  {
+    "text": "different classifications together to be",
+    "start": 757.92,
+    "duration": 6.08
+  },
+  {
+    "text": "able to get some kind of response out",
+    "start": 760.88,
+    "duration": 4.88
+  },
+  {
+    "text": "that's really valuable for you in a",
+    "start": 764.0,
+    "duration": 3.92
+  },
+  {
+    "text": "really quick time. Okay, so how does",
+    "start": 765.76,
+    "duration": 4.96
+  },
+  {
+    "text": "this all actually work? Well, they don't",
+    "start": 767.92,
+    "duration": 4.719
+  },
+  {
+    "text": "really tell us a lot here. There's no",
+    "start": 770.72,
+    "duration": 4.559
+  },
+  {
+    "text": "paper, there's no architecture diagram.",
+    "start": 772.639,
+    "duration": 4.161
+  },
+  {
+    "text": "They don't give us a lot of information.",
+    "start": 775.279,
+    "duration": 3.441
+  },
+  {
+    "text": "But what they do give us is three pieces",
+    "start": 776.8,
+    "duration": 3.76
+  },
+  {
+    "text": "that they mention that there's a new",
+    "start": 778.72,
+    "duration": 4.96
+  },
+  {
+    "text": "model architecture, a parallel sampler,",
+    "start": 780.56,
+    "duration": 4.56
+  },
+  {
+    "text": "and then perhaps the most interesting",
+    "start": 783.68,
+    "duration": 3.2
+  },
+  {
+    "text": "bit is that they're training with a new",
+    "start": 785.12,
+    "duration": 4.719
+  },
+  {
+    "text": "method they're calling RLCD. This is",
+    "start": 786.88,
+    "duration": 5.28
+  },
+  {
+    "text": "reinforcement learning for calibrated",
+    "start": 789.839,
+    "duration": 5.521
+  },
+  {
+    "text": "decisions. Now, how RLCD actually works,",
+    "start": 792.16,
+    "duration": 4.88
+  },
+  {
+    "text": "they don't really tell us, but they",
+    "start": 795.36,
+    "duration": 4.96
+  },
+  {
+    "text": "compare that to the existing LLM using",
+    "start": 797.04,
+    "duration": 5.359
+  },
+  {
+    "text": "both RLHF, so that's reinforcement",
+    "start": 800.32,
+    "duration": 4.48
+  },
+  {
+    "text": "learning from human feedback, and also",
+    "start": 802.399,
+    "duration": 4.641
+  },
+  {
+    "text": "reinforcement learning from verifiable",
+    "start": 804.8,
+    "duration": 4.64
+  },
+  {
+    "text": "rewards, which is a whole sort of GRPO",
+    "start": 807.04,
+    "duration": 3.919
+  },
+  {
+    "text": "and a lot of the ways that the modern",
+    "start": 809.44,
+    "duration": 3.12
+  },
+  {
+    "text": "models are being trained at the moment.",
+    "start": 810.959,
+    "duration": 3.281
+  },
+  {
+    "text": "So, it does seem probable to me that",
+    "start": 812.56,
+    "duration": 4.399
+  },
+  {
+    "text": "this is some kind of transformer, but",
+    "start": 814.24,
+    "duration": 4.56
+  },
+  {
+    "text": "perhaps what it's actually doing is just",
+    "start": 816.959,
+    "duration": 4.32
+  },
+  {
+    "text": "using the prefill stage to calculate",
+    "start": 818.8,
+    "duration": 4.8
+  },
+  {
+    "text": "heads, etc., and then doing a prediction",
+    "start": 821.279,
+    "duration": 4.481
+  },
+  {
+    "text": "out which is just a classification or a",
+    "start": 823.6,
+    "duration": 3.679
+  },
+  {
+    "text": "regression depending on the different",
+    "start": 825.76,
+    "duration": 3.28
+  },
+  {
+    "text": "tasks that you've got there. One of the",
+    "start": 827.279,
+    "duration": 3.841
+  },
+  {
+    "text": "cool things here is definitely the speed",
+    "start": 829.04,
+    "duration": 3.76
+  },
+  {
+    "text": "because there are no tokens being",
+    "start": 831.12,
+    "duration": 4.24
+  },
+  {
+    "text": "generated one after another. Everything",
+    "start": 832.8,
+    "duration": 5.039
+  },
+  {
+    "text": "comes back in a single pass and that",
+    "start": 835.36,
+    "duration": 4.96
+  },
+  {
+    "text": "means you're done in about 70 to 500",
+    "start": 837.839,
+    "duration": 4.56
+  },
+  {
+    "text": "milliseconds which you can add to the",
+    "start": 840.32,
+    "duration": 4.319
+  },
+  {
+    "text": "basically round trip time and it's still",
+    "start": 842.399,
+    "duration": 5.041
+  },
+  {
+    "text": "extremely fast for doing these kinds of",
+    "start": 844.639,
+    "duration": 4.961
+  },
+  {
+    "text": "tasks. Now, one of the things I find",
+    "start": 847.44,
+    "duration": 4.56
+  },
+  {
+    "text": "fascinating is that they claim it can't",
+    "start": 849.6,
+    "duration": 4.16
+  },
+  {
+    "text": "hallucinate. And it seems what they're",
+    "start": 852.0,
+    "duration": 3.76
+  },
+  {
+    "text": "really saying there is that this is not",
+    "start": 853.76,
+    "duration": 3.68
+  },
+  {
+    "text": "going to break the schema that you give",
+    "start": 855.76,
+    "duration": 3.519
+  },
+  {
+    "text": "it to basically come back with things.",
+    "start": 857.44,
+    "duration": 4.959
+  },
+  {
+    "text": "So like no broken JSON, no invented tool",
+    "start": 859.279,
+    "duration": 5.12
+  },
+  {
+    "text": "names, it can only deal with what you've",
+    "start": 862.399,
+    "duration": 3.12
+  },
+  {
+    "text": "actually given it. It's not going to",
+    "start": 864.399,
+    "duration": 2.88
+  },
+  {
+    "text": "actually generate sort of anything new",
+    "start": 865.519,
+    "duration": 3.76
+  },
+  {
+    "text": "there. Now, it does seem that it can",
+    "start": 867.279,
+    "duration": 4.161
+  },
+  {
+    "text": "still pick the wrong option and like a",
+    "start": 869.279,
+    "duration": 4.081
+  },
+  {
+    "text": "wrong answer meaning that it could have",
+    "start": 871.44,
+    "duration": 4.88
+  },
+  {
+    "text": "the right type of question but actually",
+    "start": 873.36,
+    "duration": 5.2
+  },
+  {
+    "text": "give you a wrong answer for that. And it",
+    "start": 876.32,
+    "duration": 3.68
+  },
+  {
+    "text": "seems that this is where they're relying",
+    "start": 878.56,
+    "duration": 4.32
+  },
+  {
+    "text": "on that RLCD to be able to deliver",
+    "start": 880.0,
+    "duration": 5.279
+  },
+  {
+    "text": "highquality answers back. Now, we don't",
+    "start": 882.88,
+    "duration": 4.959
+  },
+  {
+    "text": "know if this is just like a smaller LLM",
+    "start": 885.279,
+    "duration": 4.56
+  },
+  {
+    "text": "that's been trained in a different way",
+    "start": 887.839,
+    "duration": 3.521
+  },
+  {
+    "text": "or if this is actually a different",
+    "start": 889.839,
+    "duration": 4.161
+  },
+  {
+    "text": "architecture, etc. It is kind of amazing",
+    "start": 891.36,
+    "duration": 4.88
+  },
+  {
+    "text": "though that it can do things like play",
+    "start": 894.0,
+    "duration": 6.24
+  },
+  {
+    "text": "doom where it can do it so quickly that",
+    "start": 896.24,
+    "duration": 6.88
+  },
+  {
+    "text": "you can basically have it responding to",
+    "start": 900.24,
+    "duration": 4.64
+  },
+  {
+    "text": "these inputs. And the thing that I find",
+    "start": 903.12,
+    "duration": 3.76
+  },
+  {
+    "text": "fascinating here is that doing that and",
+    "start": 904.88,
+    "duration": 4.24
+  },
+  {
+    "text": "running sort of 10 queries per second",
+    "start": 906.88,
+    "duration": 4.48
+  },
+  {
+    "text": "even in that rate ends up only costing",
+    "start": 909.12,
+    "duration": 5.36
+  },
+  {
+    "text": "about $7 per hour. So overall, I would",
+    "start": 911.36,
+    "duration": 4.8
+  },
+  {
+    "text": "say if you're doing any kind of",
+    "start": 914.48,
+    "duration": 4.56
+  },
+  {
+    "text": "classification with any kind of BERT",
+    "start": 916.16,
+    "duration": 5.119
+  },
+  {
+    "text": "model or things like that, this is",
+    "start": 919.04,
+    "duration": 5.12
+  },
+  {
+    "text": "definitely worth trying out to see how",
+    "start": 921.279,
+    "duration": 5.441
+  },
+  {
+    "text": "it goes for your particular use cases.",
+    "start": 924.16,
+    "duration": 4.64
+  },
+  {
+    "text": "And I do wonder if this really delivers",
+    "start": 926.72,
+    "duration": 4.88
+  },
+  {
+    "text": "like they say it does. Is this going to",
+    "start": 928.8,
+    "duration": 5.52
+  },
+  {
+    "text": "be the end of sort of fine-tuning small",
+    "start": 931.6,
+    "duration": 4.56
+  },
+  {
+    "text": "BERT models for doing purely",
+    "start": 934.32,
+    "duration": 4.079
+  },
+  {
+    "text": "classification tasks? Anyway, they make",
+    "start": 936.16,
+    "duration": 4.16
+  },
+  {
+    "text": "the point here that this is early days,",
+    "start": 938.399,
+    "duration": 3.921
+  },
+  {
+    "text": "that they're really focused on any sort",
+    "start": 940.32,
+    "duration": 3.68
+  },
+  {
+    "text": "of decision that you need to be able to",
+    "start": 942.32,
+    "duration": 3.519
+  },
+  {
+    "text": "automate. And my guess is that they've",
+    "start": 944.0,
+    "duration": 3.76
+  },
+  {
+    "text": "probably kicked off a whole bunch of",
+    "start": 945.839,
+    "duration": 3.92
+  },
+  {
+    "text": "people trying to make open-source",
+    "start": 947.76,
+    "duration": 4.16
+  },
+  {
+    "text": "versions of this. So, over the next",
+    "start": 949.759,
+    "duration": 3.841
+  },
+  {
+    "text": "month or so, we might see some really",
+    "start": 951.92,
+    "duration": 3.44
+  },
+  {
+    "text": "interesting open- source models that",
+    "start": 953.6,
+    "duration": 4.799
+  },
+  {
+    "text": "come along with similar ideas to this.",
+    "start": 955.36,
+    "duration": 4.399
+  },
+  {
+    "text": "Anyway, let me know in the comments if",
+    "start": 958.399,
+    "duration": 3.36
+  },
+  {
+    "text": "you've actually tried Jev, where you",
+    "start": 959.759,
+    "duration": 4.161
+  },
+  {
+    "text": "could see yourself actually using it.",
+    "start": 961.759,
+    "duration": 3.76
+  },
+  {
+    "text": "And I'd love to hear from people who've",
+    "start": 963.92,
+    "duration": 3.279
+  },
+  {
+    "text": "actually tested it and found that it",
+    "start": 965.519,
+    "duration": 3.68
+  },
+  {
+    "text": "didn't work for certain things. What",
+    "start": 967.199,
+    "duration": 4.0
+  },
+  {
+    "text": "were those use cases that it didn't work",
+    "start": 969.199,
+    "duration": 3.681
+  },
+  {
+    "text": "for? And as always, if you found the",
+    "start": 971.199,
+    "duration": 3.44
+  },
+  {
+    "text": "video useful, please click like and",
+    "start": 972.88,
+    "duration": 3.199
+  },
+  {
+    "text": "subscribe. And I will talk to you in the",
+    "start": 974.639,
+    "duration": 5.2
+  },
+  {
+    "text": "next video. Bye for now.",
+    "start": 976.079,
+    "duration": 3.76
+  }
+]

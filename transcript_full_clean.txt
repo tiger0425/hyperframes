@@ -1,0 +1,441 @@
+[   0.3s -    4.8s] Okay, so if you pretty much look at what
+[   2.4s -    8.2s] every frontier lab has been doing over
+[   4.8s -   10.9s] the past 2 years, it's all been in one
+[   8.2s -   13.1s] direction. They've all been focused on
+[  10.9s -   15.0s] reasoning. And to get that reasoning,
+[  13.1s -   17.0s] mostly they've been focused on longer
+[  15.0s -   18.4s] chains of thought and thinking budgets.
+[  17.0s -   20.3s] And while those models are great,
+[  18.4s -   22.2s] they'll happily sit there for multiple
+[  20.3s -   23.8s] minutes before they even give you an
+[  22.2s -   25.6s] answer back. And of course, if you
+[  23.8s -   27.1s] wanted to see that chain of thought, the
+[  25.6s -   28.6s] Frontier Labs are not going to let you
+[  27.1s -   30.8s] see it, even though you're paying for
+[  28.6s -   33.4s] it. So if you read Daniel Canman's book,
+[  30.8s -   35.6s] thinking fast and slow, you know that
+[  33.4s -   38.0s] all this kind of reasoning stuff is
+[  35.6s -   40.2s] system two thinking. It's slow,
+[  38.0s -   41.8s] deliberate, effortful. Whereas system
+[  40.2s -   44.2s] one, on the other hand, is fast,
+[  41.8s -   46.2s] intuitive, sort of like a gut call that
+[  44.2s -   47.9s] you make really quickly without any
+[  46.2s -   49.4s] deliberation. And here's where the
+[  47.9s -   51.7s] subject of today's video, I think, is
+[  49.4s -   53.6s] really interesting. Most decisions that
+[  51.7s -   55.7s] actually sit inside of software aren't
+[  53.6s -   58.1s] system 2 problems. They're often just
+[  55.7s -   60.2s] really simple classification problems.
+[  58.1s -   62.6s] What kind of support ticket is this? Is
+[  60.2s -   65.0s] this message urgent? Did an agent's
+[  62.6s -   67.4s] output actually break a rule? You
+[  65.0s -   69.9s] shouldn't even need 30 seconds for that
+[  67.4s -   71.7s] kind of thinking, let alone the sort of
+[  69.9s -   73.4s] minutes that some of the models end up
+[  71.7s -   75.4s] taking. And while it's great that you
+[  73.4s -   77.7s] can ask one of these reasoning models
+[  75.4s -   80.6s] for a one-word answer and then wrap it
+[  77.7s -   83.3s] in JSON, you're paying a huge latency
+[  80.6s -   85.6s] cost for generating all that text before
+[  83.3s -   87.2s] you get your one-word label back. So
+[  85.6s -   89.3s] this week, a new lab that's just come
+[  87.2s -   91.7s] out of stealth has gone the complete
+[  89.3s -   93.0s] opposite way of the reasoning models.
+[  91.7s -   95.4s] They've built a model that you can't
+[  93.0s -   97.3s] chat with at all, let alone have it
+[  95.4s -   99.5s] reason and deliberate over things for a
+[  97.3s -  101.7s] long time. It just doesn't generate text
+[  99.5s -  103.3s] in the standard auto reggressive way.
+[ 101.7s -  105.4s] And the funny thing actually enforcing
+[ 103.3s -  107.9s] that is that the output tokens of this
+[ 105.4s -  110.3s] model are actually free. But actually
+[ 107.9s -  112.0s] working out why those tokens are free
+[ 110.3s -  114.3s] might be the thing that actually tells
+[ 112.0s -  115.6s] us a lot about how this thing is built.
+[ 114.3s -  118.5s] All right. So the company is called
+[ 115.6s -  120.7s] Typesafe AI and the model is called Jev.
+[ 118.5s -  122.6s] So the founder is Dio Almida and
+[ 120.7s -  124.7s] actually he was at OpenAI for quite a
+[ 122.6s -  127.4s] while before and funnily enough was one
+[ 124.7s -  129.1s] of the top authors on the instruct GPT
+[ 127.4s -  130.8s] paper. That was the paper that actually
+[ 129.1s -  132.6s] led to the whole sort of instruction
+[ 130.8s -  135.0s] tuning of models which has just
+[ 132.6s -  137.1s] progressed onwards from that to the
+[ 135.0s -  139.0s] reasoning models that we see today. So
+[ 137.1s -  141.5s] if you don't know that paper basically
+[ 139.0s -  143.8s] took a raw language model basically like
+[ 141.5s -  146.4s] what we would call a base model now and
+[ 143.8s -  149.5s] actually made it follow instructions and
+[ 146.4s -  151.2s] out of all that research came chat GPT.
+[ 149.5s -  153.8s] So this is someone who clearly helped
+[ 151.2s -  155.2s] make models good at talking to people.
+[ 153.8s -  157.0s] And the question that he says that's
+[ 155.2s -  159.2s] been bugging him for the last four years
+[ 157.0s -  161.9s] is that as models have become superhuman
+[ 159.2s -  164.3s] at chat where's all the automation here?
+[ 161.9s -  166.8s] And interestingly, he's saying that chat
+[ 164.3s -  168.6s] is the wrong interface for software.
+[ 166.8s -  170.6s] Software doesn't want a paragraph. It
+[ 168.6s -  173.0s] wants a value that it can basically use
+[ 170.6s -  175.2s] straight away. Now, Dio and the rest of
+[ 173.0s -  177.4s] the team at Typescafe AI have spent the
+[ 175.2s -  179.7s] last two years in stealth working on
+[ 177.4s -  182.5s] this model called Jev. All right. So,
+[ 179.7s -  185.0s] what is Jev? So, they specifically refer
+[ 182.5s -  186.7s] to this as a system one model. And
+[ 185.0s -  188.8s] probably the easiest way of looking at
+[ 186.7s -  191.4s] this is it's kind of like a function
+[ 188.8s -  193.5s] call. You pass in two things. The first
+[ 191.4s -  195.8s] is what they call the state which is
+[ 193.5s -  197.2s] just your unstructured text or data and
+[ 195.8s -  198.6s] that could be anything that you want
+[ 197.2s -  200.8s] classified. It could be a support
+[ 198.6s -  203.3s] ticket, could be an agent trace, it
+[ 200.8s -  205.2s] could be a log file, etc. And then the
+[ 203.3s -  207.7s] second thing that you pass in is a set
+[ 205.2s -  209.2s] of typed questions. And there are only
+[ 207.7s -  211.4s] three kinds of questions that you can
+[ 209.2s -  214.2s] ask here. There's choice where you give
+[ 211.4s -  216.5s] it a list of options and it picks one.
+[ 214.2s -  218.9s] There's score where it rates something
+[ 216.5s -  220.7s] on a scale that you defined. And then
+[ 218.9s -  223.0s] there's one called null, which is a yes
+[ 220.7s -  225.1s] or no question where it basically comes
+[ 223.0s -  227.4s] back with a probability that the answer
+[ 225.1s -  230.0s] is yes. So if you look at what comes
+[ 227.4s -  231.8s] back here, there's no text to pass for
+[ 230.0s -  234.0s] the choice question. You get the option
+[ 231.8s -  236.1s] it picked and also a probability of
+[ 234.0s -  237.4s] every other option. And I think this is
+[ 236.1s -  239.1s] really kind of interesting because this
+[ 237.4s -  241.8s] is one of the things that a lot of us
+[ 239.1s -  244.5s] have kind of been trying to fake with
+[ 241.8s -  246.7s] JSON where we ask models to do stuff and
+[ 244.5s -  247.9s] return JSON output. But in many ways,
+[ 246.7s -  250.6s] the number that you're getting back
+[ 247.9s -  252.9s] there is just generated text. And if you
+[ 250.6s -  255.8s] look at things as LLM as a judge, you'll
+[ 252.9s -  258.4s] often see that that text skews in a very
+[ 255.8s -  261.6s] certain way. I.e. it's just a model
+[ 258.4s -  263.1s] writing the character 0.9 rather than
+[ 261.6s -  265.0s] actually a real representation of
+[ 263.1s -  267.3s] probability. The way they want you to
+[ 265.0s -  270.1s] use this model is to think about it as
+[ 267.3s -  272.5s] being a smart if statement. You don't
+[ 270.1s -  275.0s] ask one big fuzzy question like rate
+[ 272.5s -  277.0s] this startup pitch. You ask small gut
+[ 275.0s -  279.4s] questions in there. What's the
+[ 277.0s -  281.4s] feasibility of this? What type of market
+[ 279.4s -  283.1s] are they going after? And of course, if
+[ 281.4s -  285.0s] you're asking a choice question, you
+[ 283.1s -  287.0s] have to actually give it the options to
+[ 285.0s -  289.4s] choose from. Then the cool thing is that
+[ 287.0s -  291.8s] you can actually combine all of those in
+[ 289.4s -  293.1s] normal code. So when something changes,
+[ 291.8s -  295.0s] you can just change a number in your
+[ 293.1s -  297.0s] code. You don't need to go and tweak any
+[ 295.0s -  299.8s] prompts or anything. All right. So what
+[ 297.0s -  303.0s] I've done is basically just code up a
+[ 299.8s -  305.4s] little demo app to try this out. I'm
+[ 303.0s -  307.4s] using the model on open router. So, this
+[ 305.4s -  309.9s] is a crazy sort of price model, right?
+[ 307.4s -  313.8s] You're looking at 4.2 cents per million
+[ 309.9s -  315.8s] tokens in and 0 cents per million tokens
+[ 313.8s -  318.1s] out. And you can see if we come in here,
+[ 315.8s -  321.7s] they've got some code to actually how to
+[ 318.1s -  323.0s] call it on using the open AI uh API
+[ 321.7s -  324.2s] endpoints. And so, we've been playing
+[ 323.0s -  326.1s] around for a couple of hours with
+[ 324.2s -  328.0s] different kinds of demos and trying out
+[ 326.1s -  330.2s] different things. So, the first key
+[ 328.0s -  331.8s] thing here is that there are three kinds
+[ 330.2s -  334.4s] of things that you can do, right? One of
+[ 331.8s -  335.8s] them is a choice. So you can see here
+[ 334.4s -  338.5s] I've got some text that I'm going to
+[ 335.8s -  341.4s] pass in and then it's got a choice of
+[ 338.5s -  344.7s] five different classes out here. And
+[ 341.4s -  347.0s] it's very good at being able to detect
+[ 344.7s -  348.5s] which of these is the right one. And so
+[ 347.0s -  351.3s] what it will do if we look at the raw
+[ 348.5s -  353.8s] output here is that it basically has a
+[ 351.3s -  355.7s] type choice. In this case the choice was
+[ 353.8s -  357.8s] French. And then it gives us the
+[ 355.7s -  359.5s] probabilities for each of these and a
+[ 357.8s -  361.4s] confidence score. And you can see that
+[ 359.5s -  363.0s] it did that pretty quickly. So, I'm
+[ 361.4s -  364.9s] probably on the opposite side of the
+[ 363.0s -  367.2s] world to where the model is actually
+[ 364.9s -  370.3s] being hosted, but you'll see that it's
+[ 367.2s -  373.0s] very quick at being able to respond even
+[ 370.3s -  375.2s] for things like this where I wanted to
+[ 373.0s -  376.5s] try it on Thai, but using with Thai
+[ 375.2s -  378.0s] characters, it's going to give it its
+[ 376.5s -  379.8s] way straight away that it's the Thai
+[ 378.0s -  382.8s] language. So, I asked it to basically
+[ 379.8s -  384.9s] make like a romanized version of that.
+[ 382.8s -  386.8s] And you could see that even that it has
+[ 384.9s -  389.0s] no problems being able to get that
+[ 386.8s -  391.8s] right. The second thing that you can do
+[ 389.0s -  394.2s] with this is you can get it to give a
+[ 391.8s -  397.0s] score. So here you can see that we're
+[ 394.2s -  398.3s] giving a score between zero and two.
+[ 397.0s -  400.5s] We're sort of doing sentiment here.
+[ 398.3s -  402.6s] We're doing a classification task again.
+[ 400.5s -  405.2s] We've got sentiment coming out. And if
+[ 402.6s -  407.7s] we go for positive sentiment, you'll see
+[ 405.2s -  411.6s] it comes out two of two. If we go for
+[ 407.7s -  413.4s] negative, zero. If we go for mixed, it's
+[ 411.6s -  416.2s] pretty good at being able to do that. I
+[ 413.4s -  419.2s] can see each time this is costing me
+[ 416.2s -  419.2s] 0.0014
+[ 419.6s -  425.5s] of a cent right in here. If you can
+[ 422.9s -  428.9s] break down what you're trying to do to
+[ 425.5s -  431.7s] lots of different classifications,
+[ 428.9s -  433.6s] you really can extremely cheaply do a
+[ 431.7s -  435.3s] lot of stuff with this. And you can see
+[ 433.6s -  436.7s] in this case where I tried to make it a
+[ 435.3s -  440.2s] little bit more positive than in the
+[ 436.7s -  442.4s] middle, I it does change coming back
+[ 440.2s -  444.6s] each time. So it still is a stochcastic
+[ 442.4s -  447.5s] process going on here. And we can see
+[ 444.6s -  449.0s] the confidence is less than before. Each
+[ 447.5s -  451.8s] time I ping it, I'm getting something
+[ 449.0s -  454.5s] slightly different but pretty close to
+[ 451.8s -  456.1s] the same sort of ballpark scores there.
+[ 454.5s -  457.8s] When we look at the API for that, you
+[ 456.1s -  459.4s] can see that okay, the probabilities
+[ 457.8s -  461.2s] that it's coming back. So you can see in
+[ 459.4s -  463.4s] this case, we've passed in a score,
+[ 461.2s -  465.4s] we've got that back coming out of there.
+[ 463.4s -  467.1s] So scoring is a really nice function in
+[ 465.4s -  470.0s] there. And then lastly, we've got the
+[ 467.1s -  472.3s] true or false or the yes no kind of
+[ 470.0s -  473.8s] probabilities here. So this is a null
+[ 472.3s -  477.4s] and it's basically going to give back a
+[ 473.8s -  479.3s] probability for what we put in. Now if I
+[ 477.4s -  483.0s] ask it something simple like that, it
+[ 479.3s -  485.0s] comes back 87% yes. Is this text asking
+[ 483.0s -  487.5s] a question? Okay, the answer would be no
+[ 485.0s -  489.8s] here. So you can see that it's 2% yes.
+[ 487.5s -  491.3s] So basically it's no, right? You could
+[ 489.8s -  493.4s] kind of think of this as being flattened
+[ 491.3s -  495.8s] out by a sigmoid function. So you've got
+[ 493.4s -  497.6s] zero to one coming out of this. And even
+[ 495.8s -  499.4s] if we do things like where okay, we've
+[ 497.6s -  502.4s] got a question but we've got no question
+[ 499.4s -  503.8s] mark, it's very confident that that is
+[ 502.4s -  505.6s] still a question without a question
+[ 503.8s -  507.5s] mark. So it's not like it's just looking
+[ 505.6s -  509.6s] for a question mark there. And you can
+[ 507.5s -  511.8s] see different kinds of questions will
+[ 509.6s -  513.7s] get different responses. So
+[ 511.8s -  516.3s] interestingly, if I just ask it, can you
+[ 513.7s -  518.7s] help? It's a lot less sure if it can
+[ 516.3s -  521.4s] because I haven't been specific. But if
+[ 518.7s -  524.2s] I ask it, can you help find my cat?
+[ 521.4s -  526.1s] Well, then it's 95% sure that it can do
+[ 524.2s -  529.4s] it. And if I just change one word in
+[ 526.1s -  531.5s] there to can you help me feed my cat, it
+[ 529.4s -  533.6s] goes back down a bit. So, it is
+[ 531.5s -  535.8s] interesting how it actually does this.
+[ 533.6s -  537.4s] You will see that like again, this is
+[ 535.8s -  539.8s] still a stochastic process. It comes
+[ 537.4s -  542.9s] back slightly different each time, but
+[ 539.8s -  545.0s] it is pretty consistent of you either
+[ 542.9s -  546.6s] being able to say one thing or the other
+[ 545.0s -  549.0s] thing. And you can see if I just give it
+[ 546.6s -  551.5s] two words, then it starts losing its
+[ 549.0s -  553.7s] confidence about this. So, it does seem
+[ 551.5s -  557.0s] to me the longer that the input that you
+[ 553.7s -  559.1s] put in, the more confident it gets with
+[ 557.0s -  560.8s] its responses out. All right. Now,
+[ 559.1s -  563.0s] looking at some sort of more practical
+[ 560.8s -  564.8s] kinds of things that we could do here,
+[ 563.0s -  566.6s] you can see that we could put in like a
+[ 564.8s -  569.1s] message of, I was charged twice for an
+[ 566.6s -  570.6s] order. Please refund the duper. Get it
+[ 569.1s -  573.7s] to work out which team it's going to
+[ 570.6s -  577.0s] route it to. Here it's billing. Kind of
+[ 573.7s -  578.3s] obvious. Sales one, it gets 100% sales.
+[ 577.0s -  580.8s] What if we do something a little bit
+[ 578.3s -  582.2s] more ambiguous? You can see now it's not
+[ 580.8s -  584.9s] very confident. It's actually coming
+[ 582.2s -  586.4s] back that it's unclear as as the class,
+[ 584.9s -  588.5s] but it's still thinking that this is
+[ 586.4s -  590.1s] more of a technical kind of thing. And
+[ 588.5s -  592.2s] you can see that each time we run that,
+[ 590.1s -  594.0s] we do get a slightly different response,
+[ 592.2s -  595.5s] you know, going through this. Now, on
+[ 594.0s -  597.4s] top of these, we're actually doing
+[ 595.5s -  599.8s] multiple things at the same time. So,
+[ 597.4s -  602.6s] you can see that we've also got a null
+[ 599.8s -  604.4s] in here for was a refund requested.
+[ 602.6s -  607.8s] Obviously, if I select this, the answer
+[ 604.4s -  609.4s] is yes. Is it sort of timesensitive?
+[ 607.8s -  612.5s] Right? In this case, it's saying
+[ 609.4s -  615.3s] timesensitive 7%. If I change that to
+[ 612.5s -  617.2s] please refund the duplicate charge right
+[ 615.3s -  619.1s] now instead of just right now, you can
+[ 617.2s -  622.6s] see the time sensitive is jumping up to
+[ 619.1s -  625.0s] sort of like 60 70% in this case. We can
+[ 622.6s -  627.4s] even try it with things like injecting
+[ 625.0s -  629.7s] stuff in there. So, doing any sort of
+[ 627.4s -  631.7s] thing where someone's trying to do a
+[ 629.7s -  633.6s] prompt injection or something like that.
+[ 631.7s -  636.9s] This seems to do pretty well at being
+[ 633.6s -  638.6s] able to get that kind of thing. Sarcasm
+[ 636.9s -  640.7s] is also something that it seems to be
+[ 638.6s -  643.2s] doing an okay job at it. It would be
+[ 640.7s -  645.0s] interesting also to test it on humor and
+[ 643.2s -  647.8s] other kind of things, but it is good
+[ 645.0s -  649.1s] that it's not being tricked by a lot of
+[ 647.8s -  651.2s] different things that normally would
+[ 649.1s -  653.0s] trick this kind of thing. Other tasks
+[ 651.2s -  655.0s] that you can get it to do is things like
+[ 653.0s -  657.0s] code reviews, like where you can
+[ 655.0s -  659.2s] basically ask it, is something safe? Is
+[ 657.0s -  661.1s] something not safe? It seems to do a
+[ 659.2s -  663.7s] good job at that. doing things like
+[ 661.1s -  666.2s] classification on different types of
+[ 663.7s -  668.1s] content. That seems to work really well.
+[ 666.2s -  670.8s] You can see here it's able to discover
+[ 668.1s -  672.9s] PII information, personal identifiable
+[ 670.8s -  674.6s] information here. Does a good job at
+[ 672.9s -  676.9s] that kind of thing. It does a good job
+[ 674.6s -  678.8s] at sort of spam detection as well. So
+[ 676.9s -  681.7s] the fourth example here is looking at
+[ 678.8s -  684.1s] agent tool selection. So this is a
+[ 681.7s -  686.5s] little bit like the cactus model that we
+[ 684.1s -  688.8s] looked at a while ago in that it's doing
+[ 686.5s -  690.2s] some kind of sort of function calling.
+[ 688.8s -  692.6s] But it's important to understand here
+[ 690.2s -  695.5s] that it's not actually extracting
+[ 692.6s -  697.3s] anything out and passing it to the tool,
+[ 695.5s -  701.0s] right? It's just telling us which tool
+[ 697.3s -  703.9s] to use as opposed to getting the right
+[ 701.0s -  705.6s] arguments out to pass to the tool. So in
+[ 703.9s -  707.8s] that sense, function calling models are
+[ 705.6s -  709.7s] still able to basically generate out
+[ 707.8s -  711.4s] what should be the input going to the
+[ 709.7s -  712.7s] function. Last up, one of the things
+[ 711.4s -  716.2s] that I thought was really interesting to
+[ 712.7s -  718.7s] test it is stringing actions together,
+[ 716.2s -  721.4s] right? So where we basically give it
+[ 718.7s -  724.2s] something and we then want to basically
+[ 721.4s -  727.0s] run a number of different tasks over
+[ 724.2s -  729.4s] this to see how long does it take, how
+[ 727.0s -  732.2s] does it actually process these. So,
+[ 729.4s -  734.2s] here's 20 different tasks going through
+[ 732.2s -  736.5s] and you can see that it's flying along.
+[ 734.2s -  738.2s] Now, I could have done them in parallel
+[ 736.5s -  739.5s] for some of them at least, but you can
+[ 738.2s -  742.5s] see that just going through it like
+[ 739.5s -  745.1s] that, we've gone through all different
+[ 742.5s -  748.2s] 20 tasks in here, gotten the answers
+[ 745.1s -  752.1s] out, gotten the results back for these,
+[ 748.2s -  753.8s] and it's cost just over 12th of 1 cent.
+[ 752.1s -  755.7s] I really feel like this is where you're
+[ 753.8s -  757.9s] going to find really interesting things,
+[ 755.7s -  760.9s] right? when you can string lots of
+[ 757.9s -  764.0s] different classifications together to be
+[ 760.9s -  765.8s] able to get some kind of response out
+[ 764.0s -  767.9s] that's really valuable for you in a
+[ 765.8s -  770.7s] really quick time. Okay, so how does
+[ 767.9s -  772.6s] this all actually work? Well, they don't
+[ 770.7s -  775.3s] really tell us a lot here. There's no
+[ 772.6s -  776.8s] paper, there's no architecture diagram.
+[ 775.3s -  778.7s] They don't give us a lot of information.
+[ 776.8s -  780.6s] But what they do give us is three pieces
+[ 778.7s -  783.7s] that they mention that there's a new
+[ 780.6s -  785.1s] model architecture, a parallel sampler,
+[ 783.7s -  786.9s] and then perhaps the most interesting
+[ 785.1s -  789.8s] bit is that they're training with a new
+[ 786.9s -  792.2s] method they're calling RLCD. This is
+[ 789.8s -  795.4s] reinforcement learning for calibrated
+[ 792.2s -  797.0s] decisions. Now, how RLCD actually works,
+[ 795.4s -  800.3s] they don't really tell us, but they
+[ 797.0s -  802.4s] compare that to the existing LLM using
+[ 800.3s -  804.8s] both RLHF, so that's reinforcement
+[ 802.4s -  807.0s] learning from human feedback, and also
+[ 804.8s -  809.4s] reinforcement learning from verifiable
+[ 807.0s -  811.0s] rewards, which is a whole sort of GRPO
+[ 809.4s -  812.6s] and a lot of the ways that the modern
+[ 811.0s -  814.2s] models are being trained at the moment.
+[ 812.6s -  817.0s] So, it does seem probable to me that
+[ 814.2s -  818.8s] this is some kind of transformer, but
+[ 817.0s -  821.3s] perhaps what it's actually doing is just
+[ 818.8s -  823.6s] using the prefill stage to calculate
+[ 821.3s -  825.8s] heads, etc., and then doing a prediction
+[ 823.6s -  827.3s] out which is just a classification or a
+[ 825.8s -  829.0s] regression depending on the different
+[ 827.3s -  831.1s] tasks that you've got there. One of the
+[ 829.0s -  832.8s] cool things here is definitely the speed
+[ 831.1s -  835.4s] because there are no tokens being
+[ 832.8s -  837.8s] generated one after another. Everything
+[ 835.4s -  840.3s] comes back in a single pass and that
+[ 837.8s -  842.4s] means you're done in about 70 to 500
+[ 840.3s -  844.6s] milliseconds which you can add to the
+[ 842.4s -  847.4s] basically round trip time and it's still
+[ 844.6s -  849.6s] extremely fast for doing these kinds of
+[ 847.4s -  852.0s] tasks. Now, one of the things I find
+[ 849.6s -  853.8s] fascinating is that they claim it can't
+[ 852.0s -  855.8s] hallucinate. And it seems what they're
+[ 853.8s -  857.4s] really saying there is that this is not
+[ 855.8s -  859.3s] going to break the schema that you give
+[ 857.4s -  862.4s] it to basically come back with things.
+[ 859.3s -  864.4s] So like no broken JSON, no invented tool
+[ 862.4s -  865.5s] names, it can only deal with what you've
+[ 864.4s -  867.3s] actually given it. It's not going to
+[ 865.5s -  869.3s] actually generate sort of anything new
+[ 867.3s -  871.4s] there. Now, it does seem that it can
+[ 869.3s -  873.4s] still pick the wrong option and like a
+[ 871.4s -  876.3s] wrong answer meaning that it could have
+[ 873.4s -  878.6s] the right type of question but actually
+[ 876.3s -  880.0s] give you a wrong answer for that. And it
+[ 878.6s -  882.9s] seems that this is where they're relying
+[ 880.0s -  885.3s] on that RLCD to be able to deliver
+[ 882.9s -  887.8s] highquality answers back. Now, we don't
+[ 885.3s -  889.8s] know if this is just like a smaller LLM
+[ 887.8s -  891.4s] that's been trained in a different way
+[ 889.8s -  894.0s] or if this is actually a different
+[ 891.4s -  896.2s] architecture, etc. It is kind of amazing
+[ 894.0s -  900.2s] though that it can do things like play
+[ 896.2s -  903.1s] doom where it can do it so quickly that
+[ 900.2s -  904.9s] you can basically have it responding to
+[ 903.1s -  906.9s] these inputs. And the thing that I find
+[ 904.9s -  909.1s] fascinating here is that doing that and
+[ 906.9s -  911.4s] running sort of 10 queries per second
+[ 909.1s -  914.5s] even in that rate ends up only costing
+[ 911.4s -  916.2s] about $7 per hour. So overall, I would
+[ 914.5s -  919.0s] say if you're doing any kind of
+[ 916.2s -  921.3s] classification with any kind of BERT
+[ 919.0s -  924.2s] model or things like that, this is
+[ 921.3s -  926.7s] definitely worth trying out to see how
+[ 924.2s -  928.8s] it goes for your particular use cases.
+[ 926.7s -  931.6s] And I do wonder if this really delivers
+[ 928.8s -  934.3s] like they say it does. Is this going to
+[ 931.6s -  936.2s] be the end of sort of fine-tuning small
+[ 934.3s -  938.4s] BERT models for doing purely
+[ 936.2s -  940.3s] classification tasks? Anyway, they make
+[ 938.4s -  942.3s] the point here that this is early days,
+[ 940.3s -  944.0s] that they're really focused on any sort
+[ 942.3s -  945.8s] of decision that you need to be able to
+[ 944.0s -  947.8s] automate. And my guess is that they've
+[ 945.8s -  949.8s] probably kicked off a whole bunch of
+[ 947.8s -  951.9s] people trying to make open-source
+[ 949.8s -  953.6s] versions of this. So, over the next
+[ 951.9s -  955.4s] month or so, we might see some really
+[ 953.6s -  958.4s] interesting open- source models that
+[ 955.4s -  959.8s] come along with similar ideas to this.
+[ 958.4s -  961.8s] Anyway, let me know in the comments if
+[ 959.8s -  963.9s] you've actually tried Jev, where you
+[ 961.8s -  965.5s] could see yourself actually using it.
+[ 963.9s -  967.2s] And I'd love to hear from people who've
+[ 965.5s -  969.2s] actually tested it and found that it
+[ 967.2s -  971.2s] didn't work for certain things. What
+[ 969.2s -  972.9s] were those use cases that it didn't work
+[ 971.2s -  974.6s] for? And as always, if you found the
+[ 972.9s -  976.1s] video useful, please click like and
+[ 974.6s -  979.8s] subscribe. And I will talk to you in the
+[ 976.1s -  979.8s] next video. Bye for now.
