@@ -6,10 +6,17 @@ pre-commit:
       run: bunx oxlint --no-error-on-unmatched-pattern {staged_files}
     format:
       glob: "*.{js,jsx,ts,tsx,json,md,yaml,yml}"
+      # Motion sidecar templates (vox-explainer's templates/frame.motion.json)
+      # carry {{PLACEHOLDERS}} and are intentionally not valid JSON, so oxfmt
+      # cannot parse them. `exclude:` does not filter {staged_files} (see the
+      # filesize command below), so drop them from the list here instead.
       # Auto-format and re-stage so the committed snapshot is always formatted.
       # Replaces --check which only reports — that left unformatted files in
       # commits when the hook ran after the amend snapshot was taken.
-      run: bunx oxfmt --no-error-on-unmatched-pattern {staged_files} && git add -f {staged_files}
+      run: |
+        files=$(printf '%s\n' {staged_files} | grep -v '\.motion\.json$' || true)
+        [ -n "$files" ] || exit 0
+        bunx oxfmt --no-error-on-unmatched-pattern $files && git add -f $files
     skills-manifest:
       glob: "skills/**"
       # Regenerate the freshness fingerprint when a skill changes, then re-stage
@@ -17,6 +24,17 @@ pre-commit:
       # enforces the same via the "Skills: manifest in sync" job). Churn-free:
       # the generator rewrites only when a content hash actually changed.
       run: bun packages/cli/scripts/gen-skills-manifest.ts && git add skills-manifest.json
+    skill-mirror:
+      # Keep the byte-identical mirror moving whenever the write side does, so
+      # CI's "Skill mirror OK" can never go red on a human edit. `--fix` copies
+      # `.agents/skills/` over `.claude/skills/`, so the glob names only the
+      # `.agents` side: a hand edit under `.claude/skills/` would be silently
+      # reverted by `--fix`, and it is better surfaced as a CI failure with
+      # "Rebuild the mirror" than as a revert nobody notices. `--fix` is
+      # churn-free (it only writes when the hash differs), so running it on
+      # every unrelated commit adds no noise.
+      glob: ".agents/skills/**"
+      run: node scripts/check-skill-mirror.mjs --fix && git add -f .claude/skills
     catalog-index:
       glob: "registry/*/*/registry-item.json"
       # Rebuild the on-device search vectors when an item's searchable text

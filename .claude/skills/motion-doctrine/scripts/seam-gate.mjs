@@ -53,6 +53,18 @@ process.on("exit", () =>
 );
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => process.exit(130));
 
+/** Kill a whole process tree. Windows has no process groups — use taskkill /T. */
+function killTree(pid) {
+  if (!pid) return;
+  try {
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      process.kill(-pid, "SIGKILL");
+    }
+  } catch {}
+}
+
 // ---------- preview server ----------
 async function httpOk(url) {
   try {
@@ -89,23 +101,26 @@ async function ensureServer() {
       "bin",
       "hyperframes.mjs",
     );
-    const cmd = flag(
-      "server-cmd",
-      existsSync(repoCli)
-        ? `node "${repoCli}" preview --foreground --no-open --port ${port}`
-        : `npx --yes hyperframes preview --foreground --no-open --port ${port}`,
-    );
-    const child = spawn("sh", ["-c", cmd.replace(/\{port\}/g, String(port))], {
-      cwd: project,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: true,
-    });
-    cleanup.push(() => {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {}
-    });
+    const defaultBin = existsSync(repoCli) ? process.execPath : "npx";
+    const defaultArgs = existsSync(repoCli)
+      ? [repoCli, "preview", "--foreground", "--no-open", "--port", String(port)]
+      : ["--yes", "hyperframes", "preview", "--foreground", "--no-open", "--port", String(port)];
+    const serverCmd = flag("server-cmd", null);
+    const child = serverCmd
+      ? spawn(serverCmd.replace(/\{port\}/g, String(port)), {
+          cwd: project,
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+          shell: true,
+          detached: process.platform !== "win32",
+        })
+      : spawn(defaultBin, defaultArgs, {
+          cwd: project,
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+          detached: process.platform !== "win32",
+        });
+    cleanup.push(() => killTree(child.pid));
     base = `http://localhost:${port}`;
     const deadline = Date.now() + 120_000;
     while (Date.now() < deadline) {
@@ -139,23 +154,34 @@ function findChrome() {
     for (const v of versions) {
       const vdir = join(root, v);
       for (const plat of readdirSync(vdir)) {
-        const bin =
+        const candidates =
           kind === "chrome-headless-shell"
-            ? join(vdir, plat, "chrome-headless-shell")
-            : join(
-                vdir,
-                plat,
-                "Google Chrome for Testing.app",
-                "Contents",
-                "MacOS",
-                "Google Chrome for Testing",
-              );
-        if (existsSync(bin)) return { bin, headlessFlag: kind !== "chrome-headless-shell" };
+            ? [
+                join(vdir, plat, "chrome-headless-shell"),
+                join(vdir, plat, "chrome-headless-shell.exe"), // Windows
+              ]
+            : [
+                join(
+                  vdir,
+                  plat,
+                  "Google Chrome for Testing.app",
+                  "Contents",
+                  "MacOS",
+                  "Google Chrome for Testing",
+                ),
+                join(vdir, plat, "chrome.exe"), // Windows
+              ];
+        const hit = candidates.find((p) => existsSync(p));
+        if (hit) return { bin: hit, headlessFlag: kind !== "chrome-headless-shell" };
       }
     }
   }
-  const sys = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  if (existsSync(sys)) return { bin: sys, headlessFlag: true };
+  const systemPaths = [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  ];
+  for (const p of systemPaths) if (existsSync(p)) return { bin: p, headlessFlag: true };
   throw new Error("no Chrome found (set CHROME_PATH)");
 }
 
@@ -172,12 +198,11 @@ async function launchChrome() {
     "about:blank",
   ];
   if (headlessFlag) args.unshift("--headless=new");
-  const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"], detached: true });
-  cleanup.push(() => {
-    try {
-      process.kill(-child.pid, "SIGKILL");
-    } catch {}
+  const child = spawn(bin, args, {
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
   });
+  cleanup.push(() => killTree(child.pid));
   const wsUrl = await new Promise((resolve, reject) => {
     let buf = "";
     const t = setTimeout(() => reject(new Error("chrome DevTools endpoint timeout")), 20_000);
@@ -375,7 +400,7 @@ async function verify() {
   for (const seam of ledger.seams) {
     const rows = [];
     const add = (check, status, detail) => rows.push({ check, status, detail });
-    const cut = seam.cut;
+    const cut = Number(seam.cut);
     const type = seam.type || "cut";
     const tA1 = Math.max(0, cut - 0.1),
       tA2 = Math.max(0, cut - dt);

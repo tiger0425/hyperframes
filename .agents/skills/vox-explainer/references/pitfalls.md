@@ -6,27 +6,27 @@
 > **§16–§19 来自第二个数据点**（`freetoken-v013-vox`，12 帧 / 267.4s / IndexTTS 克隆音），它们**没有一条能被现有门禁自动抓出**，
 > 只能靠"生成器兜底 + 人眼快照"覆盖。§16 与 §11 是**同一症状的两个不同成因**，判错方向会白改一通。
 
-| # | 坑 | 已自动化 |
-|---|---|---|
-| 1 | `check` 浏览器阶段静默空跑还报 ok | ✅（`hf.mjs check` 包装） |
-| 2 | Studio 预览会重写帧文件 | ⚠️ 流程纪律 |
-| 3 | 相机推轨选择器写错会静默失效 | ✅ |
-| 4 | `.js-hide` 无配对揭示 → 内容整块消失 | ✅ 检测 / 脚本修 |
-| 5 | 隐藏与揭示的属性配错 → 场景泄漏 / 内容不出现 | ✅ |
-| 6 | 字体策略不统一 → 混字体 + 体积翻倍 | ✅ |
-| 7 | 时长有四处，只改一处 → 中途空屏 | ✅ |
-| 8 | 可见标记里出现 `/*` → lint error | ✅ |
-| 9 | 受限沙箱下子进程工具 EPERM | ⚠️ 环境 |
-| 10 | **动效全部前置 → 画面与旁白脱节，剩下几十秒静止** | ✅（`motion_frontload`） |
-| 11 | `content_overlap` 是字体度量盒的**假阳性**（紧排中文大字） | ⚠️ 靠版心调整 / 显式声明 |
-| 12 | 解析器静默少一条（`\Z` 不是 JS 锚点） | ⚠️ 靠条数断言 |
-| 13 | 复合选择器「类名存在、组合不命中」→ 那组动效静默不发生 | ✅（`selector_miss_within_scope`） |
-| 14 | 长片渲染的磁盘闸门（默认要求 ~172 GB 临时帧） | ⚠️ 环境 / 必设环境变量 |
-| 15 | 渲染期 CDN 告警 → 必须从成片抽帧自证动效真的执行了 | ⚠️ 流程 |
-| 16 | 帧内元素漏写 `position: absolute` → 集体落回普通流 | ❌ 靠 `autoPosition()` 兜底 + 人眼 |
-| 17 | 帧脚本抛错 → 全帧 `.js-hide` 集体消失（整帧近乎空白） | ❌ 只能靠 `runtime.errors` + 人眼 |
-| 18 | 对比度审计在淡入中途采样 → 深底文字被判低对比 | ❌ 靠 `show()`（只位移不透明） |
-| 19 | `check` 只采固定若干秒点；采样点之外的布局问题抓不到 | ❌ 靠"每帧至少一张快照" + 联系表 |
+| #   | 坑                                                         | 已自动化                           |
+| --- | ---------------------------------------------------------- | ---------------------------------- |
+| 1   | `check` 浏览器阶段静默空跑还报 ok                          | ✅（`hf.mjs check` 包装）          |
+| 2   | Studio 预览会重写帧文件                                    | ⚠️ 流程纪律                        |
+| 3   | 相机推轨选择器写错会静默失效                               | ✅                                 |
+| 4   | `.js-hide` 无配对揭示 → 内容整块消失                       | ✅ 检测 / 脚本修                   |
+| 5   | 隐藏与揭示的属性配错 → 场景泄漏 / 内容不出现               | ✅                                 |
+| 6   | 字体策略不统一 → 混字体 + 体积翻倍                         | ✅                                 |
+| 7   | 时长有四处，只改一处 → 中途空屏                            | ✅                                 |
+| 8   | 可见标记里出现 `/*` → lint error                           | ✅                                 |
+| 9   | 受限沙箱下子进程工具 EPERM                                 | ⚠️ 环境                            |
+| 10  | **动效全部前置 → 画面与旁白脱节，剩下几十秒静止**          | ✅（`motion_frontload`）           |
+| 11  | `content_overlap` 是字体度量盒的**假阳性**（紧排中文大字） | ⚠️ 靠版心调整 / 显式声明           |
+| 12  | 解析器静默少一条（`\Z` 不是 JS 锚点）                      | ⚠️ 靠条数断言                      |
+| 13  | 复合选择器「类名存在、组合不命中」→ 那组动效静默不发生     | ✅（`selector_miss_within_scope`） |
+| 14  | 长片渲染的磁盘闸门（默认要求 ~172 GB 临时帧）              | ⚠️ 环境 / 必设环境变量             |
+| 15  | 渲染期 CDN 告警 → 必须从成片抽帧自证动效真的执行了         | ⚠️ 流程                            |
+| 16  | 帧内元素漏写 `position: absolute` → 集体落回普通流         | ❌ 靠 `autoPosition()` 兜底 + 人眼 |
+| 17  | 帧脚本抛错 → 全帧 `.js-hide` 集体消失（整帧近乎空白）      | ❌ 只能靠 `runtime.errors` + 人眼  |
+| 18  | 对比度审计在淡入中途采样 → 深底文字被判低对比              | ❌ 靠 `show()`（只位移不透明）     |
+| 19  | `check` 只采固定若干秒点；采样点之外的布局问题抓不到       | ❌ 靠"每帧至少一张快照" + 联系表   |
 
 ---
 
@@ -51,14 +51,15 @@
 
 ### 唯一可信的通过条件（四者同时成立）
 
-| 信号 | 期望 | 为 0 意味着 |
-|---|---|---|
-| 退出码 | 0 | — |
-| `samples.Count` | **> 0** | 运行时阶段根本没跑 |
-| `contrast.checked` | **> 0** | 对比度审计根本没跑 |
-| `duration` | **≈ 成片总长** | 它读到的是一张空页 |
+| 信号               | 期望           | 为 0 意味着        |
+| ------------------ | -------------- | ------------------ |
+| 退出码             | 0              | —                  |
+| `samples.Count`    | **> 0**        | 运行时阶段根本没跑 |
+| `contrast.checked` | **> 0**        | 对比度审计根本没跑 |
+| `duration`         | **≈ 成片总长** | 它读到的是一张空页 |
 
 **本技能的 `scripts/hf.mjs`** 提供了程序化自验证通道：
+
 1. 对 `check` 固定注入 `--no-browser-gpu`；
 2. 支持 `--out <file>` 参数：内部使用 `fs.openSync` 传递文件描述符给子进程，避开 Node 管道与 PowerShell 编码重定向，并在子进程完成后自动解析 JSON，严格校验 `errors === 0`、`samples.length > 0`、`contrast.checked > 0` 和 `duration > 0`。校验通过返回退出码 0，校验失败返回退出码 1；
 3. **严格防假冒通过**：若未传 `--out <file>`，脚本无法执行程序化自核对，将按契约返回**退出码 3**，禁止在自动化流水线中假装通过！
@@ -81,6 +82,7 @@ npx hyperframes preview --stop
 ```
 
 - **自证**：改帧前后比对文件 mtime；有写入就重拍快照。**一帧只允许一个作者**，这是同一个根因的另一面。
+- **附带**：Studio 也会回写 **`index.html`**（给 wrapper 盖 `data-hf-id`）。所以脚本解析 `id` 必须用带词界的 `(?:^|\s)id="…"` —— 裸 `\bid="…"` 会抢到 `data-hf-id` / `data-composition-id` 里的 `id`，把 wrapper 认成别的元素（issues/14 实测：`#f01` 被解析成 `#hf-ww17`，`sync --check` 误报 `wrapper-stale`）。
 
 ## §3 相机推轨的正确选择器（写错会静默失效）
 
@@ -146,7 +148,7 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
 
 ```css
 /* hf-scene-visibility-leak-guard */
-[data-composition-id="frame-NN-slug"][style*="visibility: hidden"] * ,
+[data-composition-id="frame-NN-slug"][style*="visibility: hidden"] *,
 [data-composition-id="frame-NN-slug"][style*="visibility: hidden"] {
   visibility: hidden !important;
 }
@@ -213,7 +215,7 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
   - `lint` 只管 tween 之间冲不冲突；
   - `check` 只管某一时刻的布局与对比度；
   - `audit` 当时只管静态结构。
-  **没有任何一道在看"动效在时间轴上是怎么分布的"**。
+    **没有任何一道在看"动效在时间轴上是怎么分布的"**。
 - **修法**：把每个元素的出画时刻对到旁白的**句子节拍**上。四步：
 
   ```powershell
@@ -231,6 +233,7 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
   > 用 faster-whisper 的词级时间戳把锁定稿逐字对齐到音频，产出"线索表"（元素 → 锚短语 → 秒）。
   > 12 帧 / **97 条线索全部命中**，不需要任何插值假设。做法与脚本见 [`voice-sync.md`](./voice-sync.md)。
   > 两条路可并用：`beat-*` 做"这句话在第几秒"的粗定位，词级对齐做"这个词在第几秒"的精定位。
+
 - **判据**：最晚的 tween 起点 ≥ 槽位的 **60%**；`< 40%` 由 `audit-frames` 报 `motion_frontload` error。要显式声明"这一帧就是一次到位"的，给根节点加 `data-hf-motion-frontload="ok"`。
 - **自证**：从成片本体抽同一帧的 3–4 个时间切片，确认是"逐段长出"。`verification.md` §9。
 - **顺带要改的两个习惯**：
@@ -358,7 +361,7 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
   1. 先看 `check` 的 `runtime.errors`（是 0 就说明脚本没抛错，问题在别处）；
   2. 再看该帧快照；
   3. 最后才怀疑 reveal pass 的配对（§4/§5）。
-  反过来做（先怀疑隐藏/揭示配对）会在错误的现场上改代码。
+     反过来做（先怀疑隐藏/揭示配对）会在错误的现场上改代码。
 
 ---
 
@@ -374,14 +377,20 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
 - **修法**：**深底上的文字不要用透明度入场。** 提供一个只做位移、不做透明度的入场函数：
 
   ```js
-  function show(sel, t, dy) {          // 深底文字专用：位移 + 零时长揭示
+  function show(sel, t, dy) {
+    // 深底文字专用：位移 + 零时长揭示
     tl.set(sel, { visibility: "visible" }, t);
-    tl.fromTo(sel, { y: dy === undefined ? 20 : dy },
-              { y: 0, duration: 0.45, ease: "power3.out" }, t);
+    tl.fromTo(
+      sel,
+      { y: dy === undefined ? 20 : dy },
+      { y: 0, duration: 0.45, ease: "power3.out" },
+      t,
+    );
   }
   ```
 
   浅底文字仍可用 `rise/fade`（那类采样点是安全的）。
+
 - **自证**：`contrast.warningCount === 0`（且 `contrast.checked > 0`，见 `verification.md` §2）。
 - **另一类真问题不要混进来**：文字压在"还没出现的深色底"上（1.03:1）是**真缺陷**，
   修法是挪位置或改字号，不是加 `data-layout-allow-overlap`。两类要分开判。
@@ -402,6 +411,55 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
 - **附带纪律：`snapshot` 的一批可能整体失败。** 本项目出现过一次"同一批 4 张全空、但逐帧头部与
   材料正常"（另一次重拍即全部正常）。**先怀疑批次，重拍一遍再改代码**——
   否则会在错误的现场上做修复动作，把好的帧改坏。
+
+---
+
+## §20 高光记号的多段 path 必须**共用一个 `<g>`**（issues/09）
+
+> 来源：`../vox-collage/issues/09`（笔触物理性）。`hwOnUpdate` 的 x/y 归属按 `<g>` 走；
+> 多段 path 若各自独立成 `<g>`，帧内位移会被当成三套独立位移 —— 多描的微错位反而变成整体漂移。
+
+- **现象**：高光笔触看起来"在抖/在飘"，或 `hw-boil` 的姿势只作用到其中一两段。
+- **根因**：两档笔法 `inkStroke` 产出多段 `<path>`（normal ×3 / highlight ~30），它们必须被**同一个**
+  `<g data-ink="normal|highlight">` 包住。分成多个 `<g>` 后，`hwOnUpdate` 逐 `<g>` 算变换，归属错乱。
+- **修法**：一律用 `inkMarkup(d, kind, opts)`（`tools/ink.mjs`）产出**一个** `<g data-ink=…>`；
+  不要手写多段 path 再各自包 `<g>`。门禁 `highlight_per_screen` 按 `<g data-ink="highlight">` 计数（≤3/屏）。
+
+## §21 手绘坐标必须**量测**，不许估（issues/15 重演）
+
+> 来源：`../vox-collage/issues/15`。四帧重绘里 `cover-01` 的红圈与 `frame-14` 的第二圈都**估错了行**；
+> 教训早写在 `material-sourcing.md` §四，但直到 `issues/09` 才配门禁。
+
+- **现象**：圈注 / 箭头落在材料的目标元素**旁边**（差一行或半格），静态门禁全绿。
+- **根因**：`viewBox` 与元素坐标是"目测"写的，不是量出来的。
+- **修法**：坐标写**原图像素空间**，用量测工具（`tools/_measure.py grid|crop`）量出真实坐标；
+  量测记录落 `*.measure.json`，门禁 `ink_coords_measured`（**info**，硬门禁判不了"量没量"）。
+
+## §22 撕边必须**低频**，且**相对振幅随元素尺寸缩放**（issues/15 二轮 / 本轮）
+
+> 来源：`../vox-collage/issues/15`。高频锯齿（左右各 8 段 × 3%）读起来是「撕碎的纸屑」；
+> 同一个 1.4% 振幅在 880px 卡上合适、在 1730px 长条上就成「锯齿相框」。
+
+- **现象**：纸边读成碎屑/锯齿，或宽元素边缘的撕口夸张得像相框。
+- **根因**：撕边空间频率太高，或振幅是**绝对值**而非**相对尺寸**缩放。
+- **修法**：用 `tools/torn.mjs` 的 `torn(w,{seed})` 产出 `clip-path` —— 每边 **3–4 个顶点**、
+  切幅 **1–6%**、含 **1–2 处长裂口**；**按元素宽度分档**（`>1000px` 用浅档 `wide`）。
+  元素带 `data-torn="soft|mat|wide"` + 内联 `clip-path: polygon(…%…)`，
+  门禁 `torn_spatial_frequency` / `torn_amplitude_scales_with_size`（仅 v2 项目）。
+
+---
+
+## §23 账本里的 `cut` 必须是**数字**，不能是字符串（issues/14）
+
+- **现象**：`seam-gate verify` 报 `page error … SyntaxError: missing ) after argument list`，但页面本身没坏、lint/audit 全绿。
+- **根因**：旧 `gen-index.mjs` 把 `cut` 写成字符串（`"10.8"`）；gate 用 `cut + dt` 采样，字符串被拼成 `10.80.0333…`，注入页面的求值表达式直接语法错。
+- **修法**：`gen-index` 出 `Number(…)`；`seam-gate` 侧也 `Number(seam.cut)` 兜底。**账本 `cut` 是数字**（schema 见 `motion-doctrine/references/seam-gate.md`）。
+
+## §24 接缝载体是 `class="clip"` 的 wrapper —— 只动 `opacity`，**禁 `autoAlpha`/`visibility`/`display`**（issues/14）
+
+- **现象**：`hf.mjs lint` 报 `gsap_animates_clip_element`（error），seam-stamp 生成的补间被判红。
+- **根因**：接缝载体是 index 级 wrapper（`class="clip"`），而运行时**自己**管夹层可见性；GSAP 再写 `visibility`/`display`/`autoAlpha` 会与它打架（`autoAlpha` 顺带写 `visibility`）。
+- **修法**：`seam-stamp` 一律用 **`opacity`**（gate 量的也是 opacity）；transform 类属性安全。已落进 `seam-stamp.mjs`。
 
 ---
 
@@ -426,7 +484,7 @@ node tools/vox/hf.mjs check --json --out .hyperframes/check-latest.json
 #   → contrast.warningCount === 0 （§18）
 ```
 
-`audit-frames.mjs` 覆盖 §3/§3b/§4/§5/§6/§7/§8/§10；§1 只能靠"核对三项计数"（见 §1）；
+`audit-frames.mjs` 覆盖 §3/§3b/§4/§5/§6/§7/§8/§10；**v2 项目另含 §20/§21（笔触，按产物存在性分档）**；§1 只能靠"核对三项计数"（见 §1）；
 §2/§9/§13（定位）/§14 是流程与环境纪律，没有脚本能替你遵守 —— 尤其 §2（编辑帧期间别开 `preview`）
 和"一帧一个作者"，违反它们的代价是混合态，脚本查不出来。
 

@@ -8,13 +8,21 @@
  * 全是杂音，而它们在文件系统里"看起来完全正常"。
  *
  * 判别特征（实测）：
- *   正常语音 → 帧 RMS 变异系数 CV ≥ 0.9，静音帧占比 25–48%（有停顿、有起伏）
+ *   正常语音 → 帧 RMS 变异系数 CV ≥ 0.9，静音帧占比 25–65%（有停顿、有起伏）
+ *   灰区     → CV 0.7–0.9：报 `gray`（exit 1），**必须补 ASR 内容级对稿**（克隆音常落这里）
  *   杂音     → CV ≈ 0.36，静音帧 ≈ 2%（持续噪声，无停顿、无起伏）
  *   静音     → peak RMS ≈ 0，静音帧 100%
  *
  * 关于那两个参考值：**它们取自一次真实的坏 TTS 产物**（权重版本不匹配的 IndexTTS 输出），
  * 不是人造白噪声。人造白噪声的 CV 会低到 ≈ 0.02 —— 同样会被判为杂音，只是别拿 0.36 当"典型杂音"。
  * 判据是**阈值**（CV ≥ 0.9 且静音帧在区间内），参考值只用来解释阈值为什么这么定。
+ *
+ * ⚠️ 2026-09-22 更正（issues/19）：
+ *   ① 静音帧上界由 0.48 放宽到 **0.65** —— 整片实测真实旁白（edge-tts，jev 14 条）落在 46–56%，
+ *      旧上界会把 12/14 条误判为 ambiguous（连 10s 中间窗也 3/4 中招）。
+ *   ② 旧文档写"克隆音 CV ≥ 0.7 即通过"与脚本不符；现统一为：**0.9 硬过 / 0.7–0.9 报 gray（必走 ASR）**。
+ *      真杂音 CV ≈ 0.36，与 0.7 仍有 2× 余量，所以不放宽硬阈值。
+ *   ③ 测量用 **8–12s 窗**（整片会被句间的数字静音拉高）。
  *
  * 特征的精确定义（可复现）：
  *   把目标区间解成 mono / 22050Hz / s16le，按 **20ms 一帧**算 RMS；
@@ -34,8 +42,9 @@ import { join, resolve } from "node:path";
 const SAMPLE_RATE = 22050;
 const FRAME_MS = 20;
 const SPEECH_CV_MIN = 0.9;
+const GRAY_CV_MIN = 0.7;
 const SPEECH_SILENCE_MIN = 0.25;
-const SPEECH_SILENCE_MAX = 0.48;
+const SPEECH_SILENCE_MAX = 0.65;
 
 function parseArgs(argv) {
   const out = { json: false, media: null, start: null, dur: null };
@@ -229,10 +238,9 @@ function main() {
   }
   const m = analyse(rms);
 
-  const looksSpeech =
-    m.cv >= SPEECH_CV_MIN &&
-    m.silenceRatio >= SPEECH_SILENCE_MIN &&
-    m.silenceRatio <= SPEECH_SILENCE_MAX;
+  const silenceOk = m.silenceRatio >= SPEECH_SILENCE_MIN && m.silenceRatio <= SPEECH_SILENCE_MAX;
+  const looksSpeech = m.cv >= SPEECH_CV_MIN && silenceOk;
+  const looksGray = m.cv >= GRAY_CV_MIN && m.cv < SPEECH_CV_MIN && silenceOk;
   const looksNoise = m.cv < 0.6 && m.silenceRatio < 0.1;
   const looksSilent = m.peak < 0.005 || m.silenceRatio > 0.95;
   const verdict = looksSilent
@@ -241,7 +249,9 @@ function main() {
       ? "speech"
       : looksNoise
         ? "noise"
-        : "ambiguous";
+        : looksGray
+          ? "gray"
+          : "ambiguous";
 
   const out = {
     media,
@@ -259,6 +269,7 @@ function main() {
     ok: verdict === "speech",
     thresholds: {
       speechCvMin: SPEECH_CV_MIN,
+      grayCvMin: GRAY_CV_MIN,
       speechSilence: [SPEECH_SILENCE_MIN, SPEECH_SILENCE_MAX],
     },
   };
@@ -268,7 +279,9 @@ function main() {
   } else {
     console.log(`${media}  [${args.start}s +${args.dur}s]  解码=${method} @${rate}Hz`);
     console.log(`  帧数 ${m.frames}（${FRAME_MS}ms/帧）`);
-    console.log(`  CV          = ${out.cv}      (语音 ≥ ${SPEECH_CV_MIN}；杂音 ≈ 0.36)`);
+    console.log(
+      `  CV          = ${out.cv}      (语音 ≥ ${SPEECH_CV_MIN}；灰区 ${GRAY_CV_MIN}–${SPEECH_CV_MIN}；杂音 ≈ 0.36)`,
+    );
     console.log(
       `  静音帧占比  = ${(out.silenceRatio * 100).toFixed(1)}%   (语音 ${SPEECH_SILENCE_MIN * 100}–${SPEECH_SILENCE_MAX * 100}%；杂音 ≈ 2%)`,
     );
@@ -277,11 +290,13 @@ function main() {
       `\n判定：${
         verdict === "speech"
           ? "语音 ✓"
-          : verdict === "noise"
-            ? "杂音 ✗（检查 TTS 引擎的模型结构与权重版本是否匹配）"
-            : verdict === "silent"
-              ? "静音 ✗（旁白根本没合出来，或取错了区间）"
-              : "可疑 —— 人工听一遍"
+          : verdict === "gray"
+            ? "灰区 —— 必须补第二道：ASR 转写这一段，与 SCRIPT.md 锁定稿逐句比"
+            : verdict === "noise"
+              ? "杂音 ✗（检查 TTS 引擎的模型结构与权重版本是否匹配）"
+              : verdict === "silent"
+                ? "静音 ✗（旁白根本没合出来，或取错了区间）"
+                : "可疑 —— 人工听一遍"
       }`,
     );
   }

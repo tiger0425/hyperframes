@@ -48,6 +48,14 @@ registry/**/*.html linguist-vendored
 .agents/skills/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
 .agents/skills/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 
+# The vox-explainer skill ships its 4 composition fonts (CREDITS in
+# templates/assets/fonts/). The three woff2 are tiny and stay plain, but
+# NotoSansSC-VF.ttf is ~17.8 MB and exceeds the 500 KB non-LFS limit, so TTF
+# goes through LFS in both mirrors. A fresh clone needs `git lfs pull` for the
+# big CJK face; everything else clones and renders without it.
+.claude/skills/**/*.ttf filter=lfs diff=lfs merge=lfs -text
+.agents/skills/**/*.ttf filter=lfs diff=lfs merge=lfs -text
+
 # The documentation Reference Project ships real voice and music. Only the WAV
 # masters exceed the repository's 500 KB non-LFS limit, so only those are routed
 # through LFS — the small MP3 stings stay plain so the example still clones and

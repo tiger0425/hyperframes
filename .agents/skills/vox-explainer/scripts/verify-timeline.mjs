@@ -10,8 +10,8 @@
  *   1. 每条 voice_0NN.wav 的**真实**秒数（读 wav 头，不信记录/不信 index 里的值）
  *   2. index.html 的 data-duration 与真实秒数是否一致（不一致 → 报 drift）
  *   3. 每条旁白是否放得进它的槽位（0.3 + 旁白 ≤ 槽位）
- *   4. 槽位起点是否连续（data-start 累加无空洞/重叠）
- *   5. 总长是否等于槽位之和
+ *   4. 接缝 pad：wrapper data-duration 是否 == 槽位 + 出幕 pad（有 ledger 的 v2 项目；旧式项目退化为 == 槽位）
+ *   5. 总长是否等于**槽位**之和
  *   6. 产出**全局起点表**（取快照用）
  *
  * 用法：
@@ -79,7 +79,7 @@ function readAudios(html) {
     out.push({
       tag,
       src,
-      id: tag.match(/id="([^"]+)"/)?.[1] ?? null,
+      id: tag.match(/(?:^|\s)id="([^"]+)"/)?.[1] ?? null,
       start: Number(tag.match(/data-start="([\d.]+)"/)?.[1] ?? NaN),
       duration: Number(tag.match(/data-duration="([\d.]+)"/)?.[1] ?? NaN),
       track: tag.match(/data-track-index="([\d.]+)"/)?.[1] ?? null,
@@ -95,6 +95,8 @@ function readSlots(html) {
     if (!/data-composition-src="/.test(tag)) continue;
     const cid = tag.match(/data-composition-id="([^"]+)"/)?.[1];
     const src = tag.match(/data-composition-src="([^"]+)"/)?.[1];
+    // 属性名要带词界：Studio 回写的 `data-hf-id="…"` 会让裸 /id="/ 抢到错的值（issues/14）。
+    const id = tag.match(/(?:^|\s)id="([^"]+)"/)?.[1] ?? null;
     const start = Number(tag.match(/data-start="([\d.]+)"/)?.[1] ?? NaN);
     const duration = Number(tag.match(/data-duration="([\d.]+)"/)?.[1] ?? NaN);
     // 是否落在 HTML 注释里：检查该位置之前最后一个 <!-- 与 --> 谁更近
@@ -102,7 +104,7 @@ function readSlots(html) {
     const lastOpen = before.lastIndexOf("<!--");
     const lastClose = before.lastIndexOf("-->");
     const commented = lastOpen !== -1 && lastOpen > lastClose;
-    if (cid) out.push({ cid, src, start, duration, commented });
+    if (cid) out.push({ cid, src, id, start, duration, commented });
   }
   return out.sort((a, b) => a.start - b.start);
 }
@@ -117,6 +119,22 @@ function main() {
   }
   const html = readFileSync(indexPath, "utf8");
   const slots = readSlots(html);
+  // 接缝账本（issues/20 §5.1 / issues/14）：wrapper 的 data-duration = **槽位 + 出幕 pad**。
+  // 无 ledger.json → exitDur 一律 0，退化回「wrapper 时长 == 槽位」的旧式项目。
+  const ledgerPath = join(project, "ledger.json");
+  let seams = [];
+  if (existsSync(ledgerPath)) {
+    try {
+      seams = JSON.parse(readFileSync(ledgerPath, "utf8"))?.seams ?? [];
+    } catch {
+      /* JSON 语法错由 audit-frames 报告 */
+    }
+  }
+  const exitDurOf = (id) => {
+    if (!id) return 0;
+    const s = seams.find((x) => x.exit && x.exit.selector === `#${id}`);
+    return s ? Number(s.exit.dur) || 0 : 0;
+  };
   const audios = readAudios(html);
   const voices = audios
     .filter((a) => /audio\/voice\//.test(a.src))
@@ -124,6 +142,16 @@ function main() {
     .sort((a, b) => a.start - b.start);
 
   if (slots.length === 0) {
+    // 刚 `init` 出来的空项目：0 帧 / 0 槽位是"尚未开工"，不是错误
+    // （终点验收 #3「init 开箱即过静态门禁」）。有帧却一个槽位都没有才是真错。
+    const framesDirProbe = join(project, "compositions", "frames");
+    const frameCount = existsSync(framesDirProbe)
+      ? readdirSync(framesDirProbe).filter((f) => f.endsWith(".html")).length
+      : 0;
+    if (frameCount === 0) {
+      console.log(`[usage] 项目尚未开工（0 帧 / 0 槽位）—— 无事可验，跳过`);
+      return 0;
+    }
     console.error(`[usage] index.html 里找不到槽位（需要 data-composition-src 的 div）`);
     return 2;
   }
@@ -146,7 +174,17 @@ function main() {
       "把槽位从 <!-- … --> 里拿出来、填上真实 data-start/data-duration；否则它不生效且会污染本检查",
     );
   }
-  const liveSlots = slots.filter((s) => !s.commented);
+  const liveSlots = slots
+    .filter((s) => !s.commented)
+    .map((s, i, arr) => {
+      const next = arr[i + 1];
+      const exitDur = exitDurOf(s.id);
+      const slot =
+        next && Number.isFinite(next.start)
+          ? Number((next.start - s.start).toFixed(3))
+          : Number((s.duration - exitDur).toFixed(3));
+      return { ...s, slot, exitDur, wrapperWant: Number((slot + exitDur).toFixed(3)) };
+    });
 
   // ── 0b 未替换的占位符：模板残留在 index.html 里的话，一切数字都是假的
   const leftover = [...new Set([...html.matchAll(/\{\{([A-Z0-9_]+)\}\}/g)].map((m) => m[1]))];
@@ -178,7 +216,7 @@ function main() {
     // 找所属槽位：槽位起点 + 0.3 ≈ 旁白 data-start
     const owner =
       liveSlots.find((s) => Math.abs(v.start - (s.start + 0.3)) < 0.35) ??
-      [...liveSlots].reverse().find((s) => v.start >= s.start && v.start < s.start + s.duration) ??
+      [...liveSlots].reverse().find((s) => v.start >= s.start && v.start < s.start + s.slot) ??
       null;
 
     const row = {
@@ -188,7 +226,7 @@ function main() {
       realDuration: real === null ? null : Number(real.toFixed(3)),
       start: v.start,
       slot: owner ? owner.cid : null,
-      slotDuration: owner ? owner.duration : null,
+      slotDuration: owner ? owner.slot : null,
     };
 
     if (!owner) {
@@ -211,13 +249,13 @@ function main() {
 
     if (owner && real !== null) {
       const need = 0.3 + real;
-      const breath = owner.duration - need;
+      const breath = owner.slot - need;
       row.breath = Number(breath.toFixed(3));
       if (breath < 0) {
         add(
           "error",
           "voice_overflows_slot",
-          `${owner.cid}：旁白需 ${need.toFixed(3)}s（0.3+${real.toFixed(3)}），槽位只有 ${owner.duration}s`,
+          `${owner.cid}：旁白需 ${need.toFixed(3)}s（0.3+${real.toFixed(3)}），槽位只有 ${owner.slot}s`,
           `把该槽位改成至少 ${(need + args.minBreath).toFixed(1)}s（含 ${args.minBreath}s 呼吸），并同步帧内四处时长与后续 data-start`,
         );
       } else if (breath < args.minBreath - 1e-9) {
@@ -232,23 +270,30 @@ function main() {
     voiceRows.push(row);
   }
 
-  // ── 4 槽位起点连续
-  for (let i = 1; i < liveSlots.length; i += 1) {
-    const prev = liveSlots[i - 1];
-    const cur = liveSlots[i];
-    const expected = Number((prev.start + prev.duration).toFixed(3));
-    if (Math.abs(cur.start - expected) > 0.05) {
+  // ── 4 接缝 pad：wrapper data-duration == 槽位 + 出幕 pad（issues/20 §5.1 / issues/14）
+  //      v2 的相邻 wrapper 时间上重叠是**故意的**（出幕纸要在 cut 之后继续动）；旧式项目 exitDur=0，
+  //      此判据退化成「wrapper 时长 == 槽位」。
+  if (liveSlots.length && Math.abs(liveSlots[0].start) > 1e-6) {
+    add(
+      "error",
+      "slot_start_not_zero",
+      `首槽位起点 ${liveSlots[0].start}s ≠ 0`,
+      "data-start 必须从 0 起算",
+    );
+  }
+  for (const s of liveSlots) {
+    if (Math.abs(s.duration - s.wrapperWant) > 0.001) {
       add(
         "error",
-        "slot_start_discontinuous",
-        `${cur.cid} 起点 ${cur.start}，前序 ${prev.cid} 结束于 ${expected}`,
-        "data-start 必须累加无空洞/重叠",
+        "wrapper_pad_mismatch",
+        `${s.cid}（#${s.id}）wrapper 声明 ${s.duration}s，应为 槽位 ${s.slot} + 出幕 ${s.exitDur} = ${s.wrapperWant}s`,
+        "重跑 gen-index.mjs → seam-stamp.mjs --write index.html",
       );
     }
   }
 
   // ── 5 总长
-  const sum = Number(liveSlots.reduce((acc, s) => acc + s.duration, 0).toFixed(3));
+  const sum = Number(liveSlots.reduce((acc, s) => acc + s.slot, 0).toFixed(3));
   const declaredTotal = Number(html.match(/id="root"[^>]*data-duration="([\d.]+)"/)?.[1] ?? NaN);
   if (Number.isFinite(declaredTotal) && Math.abs(declaredTotal - sum) > 0.05) {
     add(
@@ -309,7 +354,7 @@ function main() {
       frame: String(i + 1).padStart(2, "0"),
       cid: s.cid,
       start: s.start,
-      duration: s.duration,
+      duration: s.slot,
     })),
     voicesDetail: voiceRows,
     findings,
@@ -327,6 +372,13 @@ function main() {
     console.log(`\n旁白合计 ${voiceTotal}s · 槽位合计 ${sum}s · 根声明 ${out.declaredTotal}s`);
     console.log("\n全局起点表（取快照用）：");
     console.log("  " + out.startTable.map((r) => `${r.frame}=${r.start}`).join(" · "));
+    // 装配表的 owner 是 gen-frames.mjs —— 这里只**指向**它，不合并它的数据
+    // （混进时间轴校验会让两边互相污染，issues/22 §6 规则 11）。
+    console.log(
+      `  （逐帧装配/线索时刻见 tools/assemble-table.json${
+        existsSync(join(project, "tools", "assemble-table.json")) ? "" : "（v2 项目才有）"
+      } —— owner 是 gen-frames.mjs）`,
+    );
     if (findings.length) console.log("");
     for (const f of findings) {
       const tag = f.level === "error" ? "ERROR" : "WARN ";

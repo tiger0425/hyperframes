@@ -17,6 +17,9 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// 令牌源收敛（issues/13）：按**名**灌令牌 + 渲染令牌块，与 gen-frames 共用同一份实现。
+import { applyThemeTokens, normalizeTheme } from "./theme.mjs";
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "..");
 const TEMPLATES = join(SKILL_ROOT, "templates");
@@ -85,43 +88,6 @@ function substitute(text, vars) {
   return out;
 }
 
-function applyThemeTokens(text, themeConfig) {
-  if (!themeConfig || !themeConfig.colors) return text;
-  let out = text;
-  const c = themeConfig.colors;
-  const paperShadow = c["paper-shadow"] || c["paper-deep"];
-
-  // 替换 frame.md 中的 YAML 色彩声明
-  out = out.replace(/paper:\s*"#F1EDE4"/i, `paper: "${c.paper}"`);
-  out = out.replace(/paper-deep:\s*"#E3DCCC"/i, `paper-deep: "${c["paper-deep"]}"`);
-  out = out.replace(/paper-shadow:\s*"#[A-Fa-f0-9]+"/i, `paper-shadow: "${paperShadow}"`);
-  out = out.replace(/ink:\s*"#121212"/i, `ink: "${c.ink}"`);
-  out = out.replace(/ink-soft:\s*"#514C44"/i, `ink-soft: "${c["ink-soft"]}"`);
-  out = out.replace(/rule:\s*"#C9C2B4"/i, `rule: "${c.rule}"`);
-  out = out.replace(/accent:\s*"#1D4ED8"/i, `accent: "${c.accent}"`);
-  out = out.replace(/signal:\s*"#E23A2E"/i, `signal: "${c.signal}"`);
-  out = out.replace(/marker:\s*"#FFD400"/i, `marker: "${c.marker}"`);
-
-  // 替换 frame-skeleton.html 中的 CSS 变量
-  out = out.replace(/--paper:\s*#f1ede4;/i, `--paper: ${c.paper.toLowerCase()};`);
-  out = out.replace(/--paper-deep:\s*#e3dccc;/i, `--paper-deep: ${c["paper-deep"].toLowerCase()};`);
-  out = out.replace(
-    /--paper-shadow:\s*#[a-f0-9]+;/i,
-    `--paper-shadow: ${paperShadow.toLowerCase()};`,
-  );
-  out = out.replace(/--ink:\s*#121212;/i, `--ink: ${c.ink.toLowerCase()};`);
-  out = out.replace(/--ink-soft:\s*#514c44;/i, `--ink-soft: ${c["ink-soft"].toLowerCase()};`);
-  out = out.replace(/--rule:\s*#c9c2b4;/i, `--rule: ${c.rule.toLowerCase()};`);
-  out = out.replace(/--accent:\s*#1d4ed8;/i, `--accent: ${c.accent.toLowerCase()};`);
-  out = out.replace(/--signal:\s*#e23a2e;/i, `--signal: ${c.signal.toLowerCase()};`);
-  out = out.replace(/--marker:\s*#ffd400;/i, `--marker: ${c.marker.toLowerCase()};`);
-
-  // 替换 index.html 中的背景色（覆盖 body 与 #root 两处）
-  out = out.replace(/background:\s*#f1ede4;/gi, `background: ${c.paper.toLowerCase()};`);
-
-  return out;
-}
-
 function findLeftover(text) {
   return [...new Set([...text.matchAll(/\{\{([^{}]+)\}\}/g)].map((m) => m[1]))];
 }
@@ -186,7 +152,7 @@ function main() {
     if (perFrame.length) residuePerFrame.push({ file, placeholders: perFrame });
   };
 
-  // ── 加载主题预设
+  // ── 加载主题预设（令牌单一源）
   const themeName = args.theme || "paper";
   const themeFile = join(SKILL_ROOT, "themes", `${themeName}.json`);
   let themeConfig = null;
@@ -199,6 +165,14 @@ function main() {
   } else {
     console.warn(`[theme] 未找到主题预设 "${themeName}"，使用默认 paper 主题`);
   }
+  themeConfig = normalizeTheme(themeConfig ?? {});
+  // 把主题落成项目根的 `tools/theme.json` —— 生成器（gen-frames / gen-index）只读它。
+  writeFileSync(
+    join(target, "tools", "theme.json"),
+    JSON.stringify(themeConfig, null, 2) + "\n",
+    "utf8",
+  );
+  written.push("tools/theme.json");
 
   // ── 项目根文件：文档级占位符全部替换
   const rootFiles = [
@@ -232,12 +206,66 @@ function main() {
     collectResidue(dest, text);
   }
 
-  // ── 门禁脚本复制进项目（自包含：接手者不需要知道技能目录在哪）
+  // ── 技能内置字体：开箱即有字体文件，否则骨架的 @font-face 全 404、check 判红。
+  //    来源与许可见 templates/assets/fonts/CREDITS.md（四个都是 OFL）；
+  //    NotoSansSC-VF.ttf 过大，走 Git LFS（.gitattributes 的 .agents/.claude/skills/**/*.ttf）。
+  const fontsDir = join(TEMPLATES, "assets", "fonts");
+  if (existsSync(fontsDir)) {
+    for (const f of readdirSync(fontsDir)) {
+      cpSync(join(fontsDir, f), join(target, "assets", "fonts", f));
+      written.push(`assets/fonts/${f}`);
+    }
+  }
+
+  // ── 脚本复制进项目（自包含：接手者不需要知道技能目录在哪）。
+  //    分两组：通用门禁 -> tools/vox/；作者侧生成 -> tools/（这两组的分工见 references/_contract.md §5）
   const scriptsDir = join(SKILL_ROOT, "scripts");
-  const scripts = readdirSync(scriptsDir).filter(
-    (f) => f.endsWith(".mjs") && f !== "init-vox-project.mjs",
-  );
-  for (const s of scripts) {
+
+  const GATE_SCRIPTS = [
+    "audit-frames.mjs",
+    // audit-frames 依赖的共享分档模块（issues/01）—— 必须随门禁一起进项目，否则 import 失败
+    "gate-tier.mjs",
+    "sync-frame-durations.mjs",
+    "verify-timeline.mjs",
+    "verify-film-audio.mjs",
+    "hf.mjs",
+    "draft-voice-timeline.mjs",
+    "gen-vox-annotation.mjs",
+  ];
+  /** 作者侧：生成器与素材脚本。run 之前必须先读它们的头部注释（路径多为本机示例） */
+  const AUTHORING_SCRIPTS = [
+    "slots.mjs",
+    "ink.mjs",
+    // 撕边（低频 + 振幅随尺寸）生成器（issues/15）
+    "torn.mjs",
+    // gen-frames 依赖的令牌模块（issues/13）与常量模块（issues/11·22）—— 必须随生成器进项目
+    "theme.mjs",
+    "motion-const.mjs",
+    "gen-frames.mjs",
+    "gen-index.mjs",
+    // 纸 ASMR 素材生成器（通道 C：ffmpeg 确定性合成；issues/09）
+    "gen-asmr.mjs",
+    // 生成资产命名桥（调 media-use 的 comfyui provider → .media/assets/gen-<role>-<nn>.png + M5 账本行；issues/10）
+    "gen-asset.mjs",
+    "align-cues.py",
+    "synthesize_voice.py",
+    "shot.ps1",
+  ];
+
+  const available = new Set(readdirSync(scriptsDir));
+  for (const s of GATE_SCRIPTS) {
+    if (!available.has(s)) continue;
+    cpSync(join(scriptsDir, s), join(target, "tools", "vox", s));
+    written.push(`tools/vox/${s}`);
+  }
+  for (const s of AUTHORING_SCRIPTS) {
+    if (!available.has(s)) continue;
+    cpSync(join(scriptsDir, s), join(target, "tools", s));
+    written.push(`tools/${s}`);
+  }
+  // beat-* / check-selectors 这类可选工具也一并带上（有就复制）
+  for (const s of ["beat-timeline.mjs", "beat-at.mjs", "check-selectors.mjs"]) {
+    if (!available.has(s)) continue;
     cpSync(join(scriptsDir, s), join(target, "tools", "vox", s));
     written.push(`tools/vox/${s}`);
   }
@@ -258,6 +286,22 @@ function main() {
 | \`verify-film-audio.mjs\` | 语音 vs 杂音判别 | \`node tools/vox/verify-film-audio.mjs <media> <start> <dur>\` |
 | \`gen-vox-annotation.mjs\` | DOM/坐标锚定手绘 SVG 生成器 | \`node tools/vox/gen-vox-annotation.mjs --rect "x,y,w,h"\` |
 | \`draft-voice-timeline.mjs\`| 前置文案时序推导与打样 | \`node tools/vox/draft-voice-timeline.mjs\` |
+
+## tools/ —— 作者侧生成脚本（改了 frames-data / cues.json 之后按序重跑）
+
+| 脚本 | 用途 | 命令 |
+|---|---|---|
+| \`synthesize_voice.py\` | 旁白合成 + 量真实秒数 + 写 \`.media/voice-manifest.json\` | \`python tools/synthesize_voice.py [--frame NN]\` |
+| \`align-cues.py\` | 词级对齐：\`SCRIPT.md\` + \`tools/cues.json\` + faster-whisper → \`tools/cue-times.json\` | \`python tools/align-cues.py --model medium\` |
+| \`gen-frames.mjs\` | 按 \`tools/frames-data.mjs\` 生成 N 帧 + N 个侧车（构建时注入 CUE 表、自动补 \`position\`） | \`node tools/gen-frames.mjs\` |
+| \`gen-index.mjs\` | 装配 \`index.html\`（槽位 + 旁白轨 + 音效轨） | \`node tools/gen-index.mjs\` |
+| \`slots.mjs\` | 槽位表的唯一计算处（读 wav 头真值） | 被上面两个 import，不单独跑 |
+| \`ink.mjs\` | 确定性手绘路径（circle / underline / arrow / rect / check / slash） | 被 \`frames-data.mjs\` import |
+| \`shot.ps1\` | 本机 Chrome 无头实拍真实页面（2× → 3788×1960） | \`powershell -File tools/shot.ps1 -Url <url> -Out <png>\` |
+
+> **要自己改的**：\`tools/frames-data.mjs\`（逐帧 CSS / markup / 时间轴）与 \`tools/cues.json\`（线索表）
+> 是每个项目自己的内容；\`tools/cue-times.json\` 是机器产物、**不许手改**；
+> 帧里**不许写死秒数**。同步链的做法见技能 \`references/voice-sync.md\`。
 
 ## 本项目的关键约束
 
@@ -299,7 +343,7 @@ function main() {
   console.log("  4. 跑 verify-timeline.mjs 拿真实槽位表，回填 index.html 与 BRIEF.md 运行中记录");
   console.log("  5. 按 _templates/frame-skeleton.html 逐帧施工，每帧交 .motion.json 侧车");
   console.log(
-    "  6. 过门禁（顺序固定）：sync-frame-durations（修）→ audit-frames → sync-frame-durations --check → hf.mjs lint → hf.mjs check --json --out .hyperframes/check-latest.json",
+    "  6. 过门禁（门禁链 v2，顺序固定）：sync-frame-durations（修）→ hf.mjs lint → audit-frames → sync-frame-durations --check → verify-timeline → seam-gate verify（第 6 道；需无头 Chrome）→ hf.mjs check --json --out .hyperframes/check-latest.json",
   );
   return 0;
 }

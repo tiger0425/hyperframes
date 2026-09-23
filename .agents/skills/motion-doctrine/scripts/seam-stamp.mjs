@@ -7,7 +7,12 @@
 //
 // --write replaces the block between "// <seams:auto>" and "// </seams:auto>" markers
 // (adds them before the final pad tween if absent). Tier-A morphs / match-cuts get
-// visibility sets only — author the carrier handoff by hand.
+// opacity sets only — author the carrier handoff by hand.
+//
+// Opacity, never `autoAlpha`: the index-level carrier is a `class="clip"` wrapper, and the
+// framework lint (gsap_animates_clip_element) forbids GSAP writing visibility/display/autoAlpha
+// on clip elements (the runtime owns the clip window). Plain `opacity` is allowed and is what
+// the seam gate measures.
 //
 // Per-seam ledger options (all optional):
 //   exit.dur / entry.dur   — override durations (defaults below)
@@ -53,15 +58,15 @@ if (scenes.length) {
   const first = scenes[0];
   const rest = scenes.slice(1).filter((s) => !zEntries.has(s));
   emit(
-    `gsap.set("${first}", { autoAlpha: 1, xPercent: 0, yPercent: 0, scale: 1, filter: "blur(0px)", transformOrigin: "50% 50%" });`,
+    `gsap.set("${first}", { opacity: 1, xPercent: 0, yPercent: 0, scale: 1, filter: "blur(0px)", transformOrigin: "50% 50%" });`,
   );
   if (rest.length)
     emit(
-      `gsap.set([${rest.map((s) => `"${s}"`).join(",")}], { autoAlpha: 0, xPercent: 0, yPercent: 0, scale: 1, filter: "blur(0px)", transformOrigin: "50% 50%" });`,
+      `gsap.set([${rest.map((s) => `"${s}"`).join(",")}], { opacity: 0, xPercent: 0, yPercent: 0, scale: 1, filter: "blur(0px)", transformOrigin: "50% 50%" });`,
     );
   for (const [sel, p] of zEntries)
     emit(
-      `gsap.set("${sel}", { autoAlpha: 0, scale: ${p.scale}, filter: "blur(${p.blur}px)", xPercent: 0, yPercent: 0, transformOrigin: "50% 50%" });`,
+      `gsap.set("${sel}", { opacity: 0, scale: ${p.scale}, filter: "blur(${p.blur}px)", xPercent: 0, yPercent: 0, transformOrigin: "50% 50%" });`,
     );
 }
 emit(``);
@@ -73,8 +78,8 @@ for (const seam of ledger.seams) {
   emit(`// SEAM — ${seam.id} : ${seam.technique || type} (cut @${cut})`);
 
   if (type !== "cut") {
-    if (seam.exit?.selector) emit(`tl.set("${seam.exit.selector}", { autoAlpha: 0 }, ${cut});`);
-    if (seam.entry?.selector) emit(`tl.set("${seam.entry.selector}", { autoAlpha: 1 }, ${cut});`);
+    if (seam.exit?.selector) emit(`tl.set("${seam.exit.selector}", { opacity: 0 }, ${cut});`);
+    if (seam.entry?.selector) emit(`tl.set("${seam.entry.selector}", { opacity: 1 }, ${cut});`);
     emit(
       `// ${type}: carrier handoff is Tier-A — author it by hand and keep the carrier row in ledger.json`,
     );
@@ -99,23 +104,24 @@ for (const seam of ledger.seams) {
       `tl.to("${ex.selector}", { scale: ${exScale}, filter: "blur(${blur}px)", duration: ${exDur}, ease: "power3.in" }, ${round(cut - exDur)});`,
     );
     emit(
-      `tl.to("${ex.selector}", { autoAlpha: 0, duration: ${exDur}, ease: "none" }, ${round(cut - exDur)});`,
+      `tl.to("${ex.selector}", { opacity: 0, duration: ${exDur}, ease: "none" }, ${round(cut - exDur)});`,
     );
-    emit(`tl.set("${ex.selector}", { autoAlpha: 0 }, ${cut});`);
+    emit(`tl.set("${ex.selector}", { opacity: 0 }, ${cut});`);
     emit(
-      `tl.fromTo("${en.selector}", { autoAlpha: 0.15, scale: ${enFrom}, filter: "blur(${blur}px)" }, { autoAlpha: 1, scale: 1.0, filter: "blur(0px)", duration: ${enDur}, ease: "expo.out", immediateRender: false }, ${cut});`,
+      `tl.fromTo("${en.selector}", { opacity: 0.15, scale: ${enFrom}, filter: "blur(${blur}px)" }, { opacity: 1, scale: 1.0, filter: "blur(0px)", duration: ${enDur}, ease: "expo.out", immediateRender: false }, ${cut});`,
     );
   } else {
     const prop = ex.axis === "x" ? "xPercent" : "yPercent";
     const exDur = ex.dur ?? 0.34,
       enDur = en.dur ?? 0.42;
+    const exTravel = ex.travel ?? 12;
     const travel = en.travel ?? 10;
     emit(
-      `tl.to("${ex.selector}", { ${prop}: ${12 * ex.dir}, autoAlpha: 0, duration: ${exDur}, ease: "power3.in" }, ${round(cut - exDur)});`,
+      `tl.to("${ex.selector}", { ${prop}: ${exTravel * ex.dir}, opacity: 0, duration: ${exDur}, ease: "power4.in" }, ${round(cut - exDur)});`,
     );
-    emit(`tl.set("${ex.selector}", { autoAlpha: 0 }, ${cut});`);
+    emit(`tl.set("${ex.selector}", { opacity: 0 }, ${cut});`);
     emit(
-      `tl.fromTo("${en.selector}", { ${prop}: ${-travel * en.dir}, autoAlpha: 0.35 }, { ${prop}: 0, autoAlpha: 1, duration: ${enDur}, ease: "power4.out", immediateRender: false }, ${cut});`,
+      `tl.fromTo("${en.selector}", { ${prop}: ${-travel * en.dir}, opacity: 0.35 }, { ${prop}: 0, opacity: 1, duration: ${enDur}, ease: "power4.out", immediateRender: false }, ${cut});`,
     );
   }
   emit(``);

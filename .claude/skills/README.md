@@ -54,13 +54,14 @@ video end to end: brief → storyboard → locked narration → TTS → frames
 built from real material → gates → render. It carries a narrative arc,
 the paper-and-ink visual grammar (paper ground, near-black body, one
 signal blue, red pen annotations), the real-material + hand-drawn-
-annotation method, and the voice-driven timing loop — plus the five
+annotation method, and the word-level voice timing loop (every element
+appears on the word that names it) — plus the five
 gates as runnable scripts (`audit-frames`, `sync-frame-durations`,
 `verify-timeline`, `verify-film-audio`, and the `hf.mjs` wrapper for
 lint/check/snapshot), and a scaffolder that starts a project and copies
 those scripts into it.
 
-It is distilled from one shipped 4-minute, 12-frame Chinese explainer.
+It is distilled from two shipped Chinese explainers.
 **The frame count is a parameter, not a rule** — the arc and the
 per-frame discipline are what carry over; the number of frames comes
 from how the content segments. The skill directory contains a

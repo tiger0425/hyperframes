@@ -36,17 +36,40 @@ function parseArgs(argv) {
   return out;
 }
 
-/** 从 index.html 解析槽位：composition id -> 槽位时长 */
-export function readSlots(project) {
+/** 解析 index.html 的场景 wrapper（接缝载体 `#fNN`）。 */
+export function parseWrappers(project) {
   const indexPath = join(project, "index.html");
   const html = readFileSync(indexPath, "utf8");
-  const slots = new Map();
+  const rows = [];
   for (const m of html.matchAll(/<div\b[^>]*>/g)) {
     const tag = m[0];
     if (!/data-composition-src="/.test(tag)) continue;
     const cid = tag.match(/data-composition-id="([^"]+)"/)?.[1];
-    const dur = tag.match(/data-duration="([\d.]+)"/)?.[1];
-    if (cid && dur) slots.set(cid, Number(dur));
+    const id = tag.match(/(?:^|\s)id="([^"]+)"/)?.[1];
+    const dur = Number(tag.match(/data-duration="([\d.]+)"/)?.[1] ?? NaN);
+    const start = Number(tag.match(/data-start="([\d.]+)"/)?.[1] ?? NaN);
+    if (cid && Number.isFinite(dur)) rows.push({ id, cid, start, duration: dur });
+  }
+  return rows;
+}
+
+/**
+ * 槽位：composition id -> **槽位时长**。
+ * 槽位 = 下一段的 `data-start` − 本段 `data-start` —— **不含出幕转场 pad**（issues/20 §5.1）；
+ * 末段用自身 `data-duration`。这样 wrapper 的 pad 不会污染帧内 `.clip` 层的对齐判据。
+ */
+export function readSlots(project) {
+  // 文档顺序未必按 start 排 —— 先按 start 排序再差分。
+  const rows = parseWrappers(project).sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity));
+  const slots = new Map();
+  for (let i = 0; i < rows.length; i += 1) {
+    const r = rows[i];
+    const next = rows[i + 1];
+    const slot =
+      next && Number.isFinite(next.start) && Number.isFinite(r.start)
+        ? Number((next.start - r.start).toFixed(3))
+        : r.duration;
+    slots.set(r.cid, slot);
   }
   return slots;
 }
@@ -162,10 +185,39 @@ function main() {
     });
   }
 
+  // ── 接缝开口子（issues/20 §5.1）：index 级 wrapper 的 `data-duration` == 槽位 + 出幕转场时长。
+  //    有 ledger.json 才启用（无 → 退化回旧判据，不检查 wrapper pad）。
+  let wrapperStale = 0;
+  const ledgerPath = join(project, "ledger.json");
+  if (existsSync(ledgerPath)) {
+    let seams = [];
+    try {
+      seams = JSON.parse(readFileSync(ledgerPath, "utf8"))?.seams ?? [];
+    } catch {
+      /* JSON 语法错留给 audit-frames */
+    }
+    for (const w of parseWrappers(project)) {
+      const seam = seams.find((s) => s.exit && s.exit.selector === `#${w.id}`);
+      const exitDur = seam ? Number(seam.exit.dur) || 0 : 0;
+      const slot = slots.get(w.cid);
+      const want = Number(((slot === undefined ? w.duration : slot) + exitDur).toFixed(3));
+      if (Math.abs(w.duration - want) > 1e-6) {
+        wrapperStale += 1;
+        report.push({ file: `index.html#${w.id}`, status: "wrapper-stale", got: w.duration, want });
+      }
+    }
+  }
+
   const totalSlots = slots.size;
   const expectedMatch = args.frame ? files.length : totalSlots;
+  // 刚 `init` 出来的空项目：0 帧 / 0 槽位是"尚未开工"，0/0 视为通过
+  // （终点验收 #3「init 开箱即过静态门禁」）。有帧/有槽位时必须逐一对齐。
+  const noFrames = totalSlots === 0 && files.length === 0;
   const ok =
-    (args.check ? staleCount === 0 : true) && matched === expectedMatch && expectedMatch > 0;
+    (args.check ? staleCount === 0 : true) &&
+    matched === expectedMatch &&
+    (expectedMatch > 0 || noFrames) &&
+    wrapperStale === 0;
 
   if (args.json) {
     console.log(
@@ -177,6 +229,7 @@ function main() {
           matched,
           stale: staleCount,
           fixed: fixedCount,
+          wrapperStale,
           report,
         },
         null,
@@ -197,7 +250,9 @@ function main() {
         if (r.stale && r.stale.length) details.push(`layers: ${r.stale.join(", ")}`);
         if (r.sidecarStale) details.push(`sidecar: ${r.oldSidecarDuration}`);
         console.log(`${pad} STALE [${details.join(", ")}] (slot ${r.slot})`);
-      } else if (r.status === "no-slot")
+      } else if (r.status === "wrapper-stale")
+        console.log(`${pad} WRAPPER STALE [${r.got} -> ${r.want}] (接缝出幕 pad)`);
+      else if (r.status === "no-slot")
         console.log(`${pad} SKIP — index.html 里没有槽位 "${r.compositionId}"`);
       else console.log(`${pad} SKIP — 找不到 composition id`);
     }

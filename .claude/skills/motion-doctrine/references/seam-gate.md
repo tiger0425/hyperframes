@@ -1,19 +1,30 @@
 # seam-stamp.mjs + seam-gate.mjs — usage + ledger schema
 
 Generate-and-verify pair for the Seam Gate. Zero npm deps (node ≥ 22 + a local Chrome;
-the gate finds `~/.cache/puppeteer` chrome-headless-shell or system Chrome automatically).
+the gate finds `~/.cache/puppeteer` chrome-headless-shell / system Chrome automatically —
+macOS, Linux, and Windows). On Windows the script spawns the preview server itself and reaps
+it with `taskkill /T`, so `--project <dir>` works without a POSIX shell.
+
+`--project` compiles to a fresh preview server (`node <repo>/packages/cli/bin/hyperframes.mjs
+preview --foreground`), so the gate is run from a repo checkout with no build step; `CHROME_PATH`
+overrides Chrome discovery if needed.
 
 ```bash
 # STAMP: write the master seam block (base sets + all wrapper tweens) from the ledger.
 # Replaces the // <seams:auto> … // </seams:auto> block (inserts after the
 # window.__timelines["main"] registration if markers are absent). Stamped seams pass
-# the gate by construction. match-cut/morph rows get visibility sets only — the
+# the gate by construction. match-cut/morph rows get opacity sets only — the
 # carrier handoff stays hand-authored.
 node <SKILL_DIR>/scripts/seam-stamp.mjs --ledger ledger.json --write index.html
 ```
 
+Stamps drive **`opacity`, never `autoAlpha`**: the carrier is a `class="clip"` wrapper and the
+framework lint (`gsap_animates_clip_element`) forbids GSAP writing `visibility`/`display`/`autoAlpha`
+on clip elements (the runtime owns the clip window). Plain `opacity` is allowed and is what the gate
+measures.
+
 Per-seam stamp options in the ledger: `exit.dur` / `entry.dur` (durations),
-`entry.travel` (xPercent/yPercent offset, default 10 — use 8 for a soft entry),
+`exit.travel` / `entry.travel` (xPercent/yPercent offset; defaults 12 / 10 — use 8 for a soft entry),
 `blur` (Z seams, default 18px full-frame / set 10 for text-scale).
 
 ```bash

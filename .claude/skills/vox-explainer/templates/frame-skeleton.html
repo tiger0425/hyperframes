@@ -2,7 +2,7 @@
   <style>
     /* hf-scene-visibility-leak-guard — 集成块，原样保留，别删（见 references/pitfalls.md §5）
        非活动场景宿主隐藏时是 visibility:hidden，帧内任何 visibility:visible 会逃出去。 */
-    [data-composition-id="{{COMPOSITION_ID}}"][style*="visibility: hidden"] * ,
+    [data-composition-id="{{COMPOSITION_ID}}"][style*="visibility: hidden"] *,
     [data-composition-id="{{COMPOSITION_ID}}"][style*="visibility: hidden"] {
       visibility: hidden !important;
     }
@@ -45,8 +45,24 @@
       font-display: block;
     }
 
-    /* ── 设计令牌（frame.md 的色彩段；数值见 frame.md，不要在这里另立一套） ── */
-    #root {
+    /* ── 画布与定位上下文：**这两条不能省** ──
+       html/body 的默认 margin 是 8px；#root 若没有 position:relative，帧内那些
+       只写了 left/top 的绝对定位元素会**落回普通流、堆在帧顶**（pitfalls §16）。
+       第二数据点实测：12 帧里 47 条规则因此错位，check 一次报 34 处 content_overlap。 */
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    /* ── 设计令牌：唯一源 = tools/theme.json（init 从 themes/<name>.json 复制）；
+           数值见 frame.md，**不要在这里另立一套**（issues/13 令牌源收敛）。
+           令牌挂在 :root，html/body 与 #root 都能继承。 ── */
+    :root {
       --paper: #f1ede4;
       --paper-deep: #e3dccc;
       --paper-shadow: #ded6c4;
@@ -58,6 +74,11 @@
       --marker: #ffd400;
       --margin: 96px;
       --gutter: 32px;
+    }
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
     }
 
     [data-composition-id="{{COMPOSITION_ID}}"] {
@@ -86,8 +107,13 @@
       text-transform: uppercase;
       color: var(--ink-soft);
     }
-    .channel-tag { left: var(--margin); }
-    .frame-index { right: var(--margin); font-variant-numeric: tabular-nums; }
+    .channel-tag {
+      left: var(--margin);
+    }
+    .frame-index {
+      right: var(--margin);
+      font-variant-numeric: tabular-nums;
+    }
 
     /* 等宽元信息：数字与字段名一律 mono + tabular-nums */
     .mono {
@@ -155,15 +181,23 @@
     }
   </style>
 
-  <div id="root" data-composition-id="{{COMPOSITION_ID}}" data-width="1920" data-height="1080" data-duration="{{DURATION}}">
-    <!-- 地面层：纸感底 + 半调网点 + 颗粒（grain-overlay 的手法；不要手搓渐变） -->
+  <div
+    id="root"
+    data-composition-id="{{COMPOSITION_ID}}"
+    data-width="1920"
+    data-height="1080"
+    data-duration="{{DURATION}}"
+  >
+    <!-- 地面层：**纸色底（无网点）** —— C2（`issues/15` 四轮 → 落地 `issues/19`）：
+         真实半调只出现在图像上，白纸没有网点。纸的质感靠下方 grain 层
+         （污渍 / 边缘泛黄 / 折痕 / 各向异性纤维 = `issues/19` 已知欠账）。
+         ⚠️ 网点令牌 `halftone-*` 只供**图像与垫纸**用，不要加回这一层。 -->
     <div
       id="{{COMPOSITION_ID}}-paper"
       class="clip"
       data-start="0"
       data-duration="{{DURATION}}"
       data-track-index="0"
-      style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='2.2' cy='2.2' r='1.15' fill='%23121212' fill-opacity='0.12'/%3E%3C/svg%3E&quot;)"
     ></div>
 
     <!-- 内容层：这一帧的全部可见内容都放这里 -->
@@ -211,7 +245,10 @@
       data-start="0"
       data-duration="{{DURATION}}"
       data-track-index="2"
-      style="opacity:0.06;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"
+      style="
+        opacity: 0.06;
+        background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E&quot;);
+      "
     ></div>
   </div>
 
@@ -237,10 +274,21 @@
         0.4,
       );
 
+      // ── 深底上的文字：用"只位移、不透明度"的 show()，不要用 fade()。
+      //    对比度审计会在固定秒点采样；fade 途中被采到会把浅字压深底量成 1.5:1（pitfalls §18）。
+      // function show(sel, t, dy) {
+      //   tl.set(sel, { visibility: "visible" }, t);
+      //   tl.fromTo(sel, { y: dy === undefined ? 20 : dy },
+      //             { y: 0, duration: 0.45, ease: "power3.out" }, t);
+      // }
+
       // ── 手绘逐笔画出：getTotalLength() 的 dash。画完归零偏移，否则重播时线是断的。
+      //    ⚠️ 只能传 SVG <path>。传给 <div> 会抛 TypeError，而 reveal pass 在脚本末尾，
+      //       于是这一帧所有 .js-hide 元素集体消失（pitfalls §17）。要框 div 就用 inkRect 画真路径。
       //    document.querySelectorAll("#{{COMPOSITION_ID}}-content .scribble").forEach((p) => {
       //       const len = p.getTotalLength();
       //       gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+      //       tl.set(p, { visibility: "visible" }, 1.6);
       //       tl.to(p, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, 1.6);
       //     });
 

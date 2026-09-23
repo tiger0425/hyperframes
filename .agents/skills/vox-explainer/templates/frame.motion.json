@@ -4,11 +4,11 @@
   "rules": ["{{RULE_1}}", "{{RULE_2}}"],
   "exit": {
     "vector": "离场矢量：这一帧结束时画面朝哪个方向运动、什么在动（写具体元素与方向）",
-    "still_moving": false
+    "still_moving": true
   },
   "entry": {
-    "vector": "入场矢量：从哪个方向来、什么在动",
-    "from_rest": true
+    "vector": "入场矢量：从哪个方向来、什么在动（**中途入场**，不是从静止起步）",
+    "from_rest": false
   },
   "notes": "施工中做的取舍写这里：哪个动作与旁白不同步、哪个元素故意越界、哪个材料是裁切过的。"
 }

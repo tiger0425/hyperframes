@@ -51,13 +51,31 @@
  *   3 = check 未经自验证（未提供 --out，无法程序化自证）
  */
 import { spawnSync } from "node:child_process";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
 const SANDBOX_PROBE = ["E_PERM", "sandbox", "命名管道", "named pipe"];
 
+/** 线索时间常量（issues/11 Q1）。**单一来源是 scripts/motion-const.mjs**；但 hf.mjs 与它分属
+ *  门禁/作者两目录（`tools/vox/` vs `tools/`），目录边界禁止跨侧 import，故此处复写同一组值。
+ *  改值必须两处同改。 */
+const NARRATION_LEAD = 0.3;
+const DEFAULT_LEAD = 0.2;
+/** 对拍默认半窗（秒）—— `cue ± window` 两张快照（issues/22 §6 规则 10）。 */
+const DEFAULT_PAIR_WINDOW = 0.15;
+
 function parse(argv) {
-  const out = { cmd: null, project: process.cwd(), outPath: null, rest: [] };
+  const out = {
+    cmd: null,
+    project: process.cwd(),
+    outPath: null,
+    rest: [],
+    pair: false,
+    cue: null,
+    window: DEFAULT_PAIR_WINDOW,
+    frame: null,
+    output: null,
+  };
   let sawProject = false;
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -67,10 +85,166 @@ function parse(argv) {
       sawProject = true;
     } else if (a === "--out") {
       out.outPath = argv[++i];
-    } else out.rest.push(a);
+    } else if (a === "--pair") out.pair = true;
+    else if (a === "--cue") out.cue = argv[++i];
+    else if (a === "--window") out.window = Number(argv[++i]);
+    else if (a === "--frame") out.frame = argv[++i];
+    else if (a === "--output" || a === "-o") out.output = argv[++i];
+    else out.rest.push(a);
   }
   out.sawProject = sawProject;
+  // 这四个开关只有 `snapshot --pair` 认；其它命令要**原样透传**给 CLI
+  // （否则 `snapshot --at … -o <dir>` 的输出目录会被吞掉）。
+  if (!out.pair) {
+    if (out.frame !== null) out.rest.push("--frame", out.frame);
+    if (out.output !== null) out.rest.push("--output", out.output);
+    if (out.cue !== null) out.rest.push("--cue", out.cue);
+    if (out.window !== DEFAULT_PAIR_WINDOW) out.rest.push("--window", String(out.window));
+  }
   return out;
+}
+
+/** index.html 里每个槽位的起点（composition id → 秒），供 cue → 全局时间换算。 */
+function readSlotStarts(project) {
+  const p = join(project, "index.html");
+  if (!existsSync(p)) return new Map();
+  const html = readFileSync(p, "utf8");
+  const starts = new Map();
+  for (const m of html.matchAll(/<div\b[^>]*data-composition-src="[^"]*"[^>]*>/g)) {
+    const cid = m[0].match(/data-composition-id="([^"]+)"/)?.[1];
+    const start = m[0].match(/data-start="([\d.]+)"/)?.[1];
+    if (cid && start !== undefined) starts.set(cid, Number(start));
+  }
+  return starts;
+}
+
+/**
+ * 把线索名换成**全局秒点**。
+ *   帧内秒点 = CUE[k] + NARRATION_LEAD − DEFAULT_LEAD（= 帧脚本里 `at(k)` 的公式）
+ *   全局秒点 = 该帧槽位起点 + 帧内秒点
+ * 线索名可跨帧重名（实测 freetoken 的 `ver-badge` 同时在 01 与 03）→ 用 `--frame NN` 消歧。
+ */
+function resolveCue(project, cueKey, frameArg) {
+  const cuePath = join(project, "tools", "cue-times.json");
+  if (!existsSync(cuePath)) {
+    throw new Error(
+      "找不到 tools/cue-times.json —— --pair 需要词级线索表（跑 align-cues.py 产出）",
+    );
+  }
+  let table;
+  try {
+    table = JSON.parse(readFileSync(cuePath, "utf8"));
+  } catch (e) {
+    throw new Error(`tools/cue-times.json 不是合法 JSON：${e.message}`);
+  }
+  const wantNN = frameArg === null ? null : String(frameArg).padStart(2, "0");
+  const hits = [];
+  for (const [frameKey, fr] of Object.entries(table)) {
+    const nn = String(fr?.nn ?? "");
+    if (wantNN && nn !== wantNN) continue;
+    for (const c of fr?.cues ?? []) {
+      if (c?.id === cueKey) hits.push({ frameKey, nn, cueT: Number(c.t) });
+    }
+  }
+  if (hits.length === 0) {
+    throw new Error(
+      wantNN
+        ? `线索 "${cueKey}" 在帧 ${wantNN} 的 tools/cue-times.json 里找不到`
+        : `线索 "${cueKey}" 在 tools/cue-times.json 里找不到`,
+    );
+  }
+  if (hits.length > 1) {
+    const names = hits.map((h) => `${h.frameKey}`).join(", ");
+    throw new Error(`线索 "${cueKey}" 在多帧里重名（${names}）—— 加 --frame NN 指定`);
+  }
+  const hit = hits[0];
+  const starts = readSlotStarts(project);
+  const entry = [...starts.entries()].find(([cid]) => cid.startsWith(`frame-${hit.nn}-`));
+  if (!entry) throw new Error(`index.html 里找不到 frame-${hit.nn}-* 的槽位起点`);
+  return { ...hit, cid: entry[0], frameStart: entry[1] };
+}
+
+/**
+ * `snapshot --pair --cue <key> [--window 0.15]` —— 线索对拍（issues/22 §6 规则 10）。
+ * 在 `cue ± window` 各拍一张：**两张的在場元素集合必须不同**（不同 ⇒ 该线索确实在此刻落定）。
+ * 判据与流程写在 references/verification.md §9。
+ *
+ * 机制上一张一张地拍会各起一次浏览器，故用**一次 CLI 调用** `--at t-w,t+w`（同一会话），
+ * 再逐字节比对两张 PNG：**字节相同 ⇒ 两张像素相同 ⇒ 该变化没落在 ±window 里**（同步失败）。
+ * 反过来（字节不同）只说明"有变化"，仍需人眼看元素是否"跟着词出现"——本工具不替代 §9 的眼睛。
+ */
+function runPairSnapshot(project, args, cli) {
+  if (!args.cue) {
+    console.error("usage: hf.mjs snapshot --pair --cue <线索名> [--window 0.15] [--frame NN]");
+    return 2;
+  }
+  let hit;
+  try {
+    hit = resolveCue(project, args.cue, args.frame);
+  } catch (e) {
+    console.error(`[hf] --pair: ${e.message}`);
+    return 2;
+  }
+  const w = Number.isFinite(args.window) && args.window > 0 ? args.window : DEFAULT_PAIR_WINDOW;
+  const at = hit.frameStart + NARRATION_LEAD + hit.cueT - DEFAULT_LEAD;
+  const r3 = (x) => Number(Math.max(0, x).toFixed(3));
+  const lo = r3(at - w);
+  const hi = r3(at + w);
+  const outDir = args.output
+    ? resolve(project, args.output)
+    : join(project, ".hyperframes", `pair-${args.cue}`);
+
+  console.log(
+    `[hf] pair snapshot  cue=${args.cue}  frame=${hit.cid}  ` +
+      `帧内 ${hit.cueT}s → 全局 ${at.toFixed(3)}s  → --at ${lo},${hi} (±${w}s)`,
+  );
+
+  const passthrough = args.rest.filter((a) => a !== "--end" && a !== "--no-end");
+  const argv = [
+    cli,
+    "snapshot",
+    project,
+    "--at",
+    `${lo},${hi}`,
+    "--no-end",
+    "--output",
+    outDir,
+    ...passthrough,
+  ];
+  const r = spawnSync(process.execPath, argv, { cwd: project, stdio: "inherit", shell: false });
+  if (r.status !== 0) return r.status === null ? 2 : r.status;
+
+  let pngs = [];
+  try {
+    pngs = readdirSync(outDir)
+      .filter((f) => /\.png$/i.test(f) && !/^contact-sheet/i.test(f))
+      .sort();
+  } catch {
+    /* fall through to the count check */
+  }
+  if (pngs.length !== 2) {
+    console.error(
+      `[hf] --pair: 期望 2 张快照，得到 ${pngs.length} 张（${outDir}）—— 检查 --at 是否被吞掉`,
+    );
+    return 2;
+  }
+  const [aBuf, bBuf] = pngs.map((f) => readFileSync(join(outDir, f)));
+  console.log("");
+  console.log("─".repeat(72));
+  if (aBuf.equals(bBuf)) {
+    console.error(
+      `[hf] --pair 失败：${pngs[0]} 与 ${pngs[1]} 逐字节相同 —— 该线索的变化没有落在 ±${w}s 里。`,
+    );
+    console.error("     元素在该窗口内没有任何变化 ⇒ 要么出现得太早（线索名/锚短语写错），");
+    console.error("     要么根本没出现。改完线索名必须重拍（at() 对未定义线索返回 0）。");
+    console.error(`     证据：${outDir}`);
+    return 1;
+  }
+  console.log(`[hf] --pair 通过（两张不同）：${pngs[0]} vs ${pngs[1]}`);
+  console.log("     ⚠️ 字节不同只说明「有变化」—— 仍须用 read_image 亲眼看元素是否跟着词出现");
+  console.log("     （verification.md §9：抽 10 条线索做同样的对拍）。");
+  console.log(`     证据：${outDir}`);
+  return 0;
 }
 
 /** 找 CLI：项目内 node_modules → 仓库 packages/cli/dist */
@@ -101,6 +275,9 @@ function main() {
     console.error(
       "usage: node hf.mjs <lint|check|snapshot> [args] [--out <file>] [--project <dir>]",
     );
+    console.error(
+      "       node hf.mjs snapshot --pair --cue <线索名> [--window 0.15] [--frame NN]   # 线索对拍",
+    );
     return 2;
   }
   const project = resolve(args.project);
@@ -114,6 +291,10 @@ function main() {
   }
 
   const rest = [...args.rest];
+  // 成对快照（线索对拍）走独立编排：先算全局秒点，再交给 CLI 一次拍两张。
+  if (cmd === "snapshot" && args.pair) {
+    return runPairSnapshot(project, args, cli);
+  }
   if (
     cmd === "check" &&
     !rest.some((a) => a.startsWith("--browser-gpu") || a.startsWith("--no-browser-gpu"))
@@ -198,11 +379,7 @@ function main() {
       const warnings = sections.reduce((n, s) => n + (s?.warningCount ?? 0), 0);
 
       const passed =
-        errors === 0 &&
-        warnings === 0 &&
-        sampleCount > 0 &&
-        contrastChecked > 0 &&
-        duration > 0;
+        errors === 0 && warnings === 0 && sampleCount > 0 && contrastChecked > 0 && duration > 0;
       console.log("");
       console.log("─".repeat(72));
       if (!passed) {

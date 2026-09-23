@@ -126,6 +126,11 @@ read as "the video is waiting." A scene that finishes entering with seconds left
 planning bug: add story, not wobble. Every phase between entry and exit is owned by one
 of these routes (name the route in the plan):
 
+> **Scope note (a clarification, NOT a licence):** this ban targets **element** idle motion.
+> Micro-motion of **material / texture layers** (grain, halftone, fibre) is outside its scope —
+> its limits and allowed range live in `vox-explainer`'s `visual-grammar` §11. Reading this
+> grants no permission to add wobble; it only says which layer this rule does not cover.
+
 | Route                  | What it is                                                                                                             |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Staged reveals**     | Hold content back; pay it off on narration beats — the frame keeps gaining information (default for ≥2 content groups) |

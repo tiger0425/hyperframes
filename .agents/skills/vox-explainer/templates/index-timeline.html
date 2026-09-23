@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN" data-resolution="landscape">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=1920, height=1080">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
     <title>{{TITLE}}</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
@@ -11,20 +11,35 @@
         padding: 0;
         box-sizing: border-box;
       }
+      /* 设计令牌：唯一源 = tools/theme.json（init 从 themes/<name>.json 复制）。
+         改主题请重跑 `init --theme <name>` 或改 tools/theme.json，不要手改这里。 */
+      :root {
+        --paper: #f1ede4;
+        --paper-deep: #e3dccc;
+        --paper-shadow: #ded6c4;
+        --ink: #121212;
+        --ink-soft: #514c44;
+        --rule: #c9c2b4;
+        --accent: #1d4ed8;
+        --signal: #e23a2e;
+        --marker: #ffd400;
+        --margin: 96px;
+        --gutter: 32px;
+      }
       html,
       body {
         margin: 0;
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: #f1ede4;
+        background: var(--paper);
       }
       #root {
         position: relative;
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background: #f1ede4;
+        background: var(--paper);
       }
       .clip {
         position: absolute;
@@ -36,33 +51,42 @@
   </head>
   <body>
     <!-- 主时间轴。data-duration = 全部槽位之和（由 verify-timeline.mjs 产出，不要手算）。 -->
-    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="{{TOTAL}}">
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="{{TOTAL}}"
+    >
       <!-- ══ 场景槽位（槽位数 = 该项目帧数 {{FRAMES}}，不是固定的 12）══
-           **这里不要留真实元素的示例** —— 注释里的 <audio>/<div> 仍会被 lint 解析，
-           留下不存在的 src 会直接报 audio_src_not_found。
-           下面用缩进文本描述结构，作者照它写真实元素：
+           **这里不要留任何真实的元素标签** —— 注释里的 audio / div 标签照样会被
+           lint 解析，留下不存在的 src 会直接报 audio_src_not_found。
+           下面用「标签名 + 属性列表」描述结构（没有尖括号），作者照它写真实元素：
 
-             <div id="f01" class="clip"
-                  data-composition-id="frame-01-slug"        ← 必须等于帧内的 composition id
-                  data-composition-src="compositions/frames/01-slug.html"
-                  data-start="0.0"                            ← 前序槽位累加
-                  data-duration="<该帧槽位>"                   ← = 0.3 + 旁白秒数 + 2.4
-                  data-track-index="1" data-width="1920" data-height="1080"></div>
+             div#f01.clip
+               data-composition-id  = "frame-01-slug"   ← 必须等于帧内的 composition id
+               data-composition-src = "compositions/frames/01-slug.html"
+               data-start           = "0.0"             ← 前序槽位累加
+               data-duration        = "<该帧槽位>"       ← = 0.3 + 旁白秒数 + 2.4
+               data-track-index     = "1"  data-width = "1920"  data-height = "1080"
 
            改完任一槽位，必须同时改帧内所有 data-duration，并跑
            `sync-frame-durations --check`。
 
-           ══ 旁白轨（data-track-index="10"）══
+           ══ 旁白轨（data-track-index = "10"）══
            data-start = 槽位起点 + 0.3 ；data-duration = wav 真实秒数（不要写估计值）
 
-             <audio id="vo-01" src=".media/audio/voice/voice_001.wav"
-                    data-start="0.3" data-duration="<真实秒数>" data-track-index="10"></audio>
+             audio#vo-01
+               src           = ".media/audio/voice/voice_001.wav"
+               data-start    = "0.3"  data-duration = "<真实秒数>"  data-track-index = "10"
 
-           ══ 音效轨（data-track-index="11"）══
+           ══ 音效轨（data-track-index = "11"）══
            稀疏标点，不是垫床：只在"画面发生了一件事"的位置出现。
 
-             <audio id="sfx-hook" src=".media/audio/sfx/sfx_001.mp3"
-                    data-start="0.05" data-duration="<真实秒数>" data-track-index="11"></audio>
+             audio#sfx-hook
+               src           = ".media/audio/sfx/sfx_001.mp3"
+               data-start    = "0.05"  data-duration = "<真实秒数>"  data-track-index = "11"
       -->
     </div>
 

@@ -23,11 +23,11 @@
 
 参考取值（这条管线唯一的经验数据点，仅供起步估算，别当规范）：
 
-| 内容规模 | 帧数 | 说明 |
-|---|---|---|
-| 单个概念 / motion graphic | 4–6 | 钩子 → 概念 → 一两个例证 → 收尾 |
-| 单一主题教学片（本项目） | 12 | 前后 6 帧 + 3 机制各 1 帧 + 3 步演示各 1 帧 |
-| 多机制产品讲解 | 14–20 | 机制与演示按实际条数展开，别硬塞进 3 |
+| 内容规模                  | 帧数  | 说明                                        |
+| ------------------------- | ----- | ------------------------------------------- |
+| 单个概念 / motion graphic | 4–6   | 钩子 → 概念 → 一两个例证 → 收尾             |
+| 单一主题教学片（本项目）  | 12    | 前后 6 帧 + 3 机制各 1 帧 + 3 步演示各 1 帧 |
+| 多机制产品讲解            | 14–20 | 机制与演示按实际条数展开，别硬塞进 3        |
 
 **因此下文出现的 `12` 一律读作 `{{FRAMES}}`（该项目自己的帧数）**，`NN` 是帧序号。
 `NN / 12` 这类边缘锚请写成 `NN / <总帧数>`。
@@ -62,9 +62,10 @@
     components/*.html           ← 装过的注册表区块（vox-annotate / hw-* / grain-overlay）
   assets/fonts/                 ← 项目内字体文件（@font-face 指向这里）
   .media/
-    assets/*.png                ← "真实材料"截屏（2×，3788×1960）
+    assets/*.png                ← "真实材料"截屏（2×，3788×1960）；生成资产另用 gen-<role>-<nn>.png（M5，见 §5 gen-asset.mjs）
     audio/voice/voice_0NN.wav   ← 旁白（index.html 真正播放的那一份）
     audio/sfx/sfx_0NN.mp3       ← 音效标点
+    audio/asmr/asmr-*.wav       ← 纸 ASMR 点缀（PCM WAV / 48k / mono / ≤2.5s；**绝不能放 voice/**）
     manifest.jsonl              ← 素材账本（每份资产一行）
     tts-batch.json              ← TTS 批合成规格（indextts_batch 的输入）
   tools/                        ← 施工脚本副本（用本技能 scripts/ 初始化）
@@ -83,13 +84,13 @@
 
 ## 2 · 五阶段与门禁
 
-| 阶段 | 名字 | 产物 | 出口判据（不满足不许进下一阶段） |
-|---|---|---|---|
-| 1 | `brief` | `BRIEF.md` | frontmatter 齐全：workflow/flow/storyboard/message/destination/aspect/language/length/angle/audience |
-| 2 | `storyboard` | `STORYBOARD.md` | 每帧有 scene/duration/poster/transition_in/status/src/motion/voiceover + 一段"画面"描述 |
-| 3 | `script` | `SCRIPT.md` + `frame.md` | 旁白**逐字锁定**（后面不许改文案）+ 设计令牌落盘 |
-| 4 | `voice` | `.media/audio/voice/*.wav` + `.media/tts-batch.json` | 每条旁白合成完毕且**过语音判别**（见 `verification.md` §2） |
-| 5 | `build` | {{FRAMES}} 帧 + `NN-slug.motion.json` + `index.html` | `audit-frames` 全绿 + `lint` 0/0 + `check` 0/0（且自证真跑了） |
+| 阶段 | 名字         | 产物                                                                                                                                 | 出口判据（不满足不许进下一阶段）                                                                                                                                                                                                   |
+| ---- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `brief`      | `BRIEF.md`                                                                                                                           | frontmatter 齐全：workflow/flow/storyboard/message/destination/aspect/language/length/angle/audience                                                                                                                               |
+| 2    | `storyboard` | `STORYBOARD.md`                                                                                                                      | 每帧有 scene/duration/poster/transition_in/status/src/motion/voiceover + 一段"画面"描述                                                                                                                                            |
+| 3    | `script`     | `SCRIPT.md` + `frame.md`                                                                                                             | 旁白**逐字锁定**（后面不许改文案）+ 设计令牌落盘                                                                                                                                                                                   |
+| 4    | `voice`      | `.media/audio/voice/*.wav` + `.media/tts-batch.json`                                                                                 | 每条旁白合成完毕且**过语音判别**（见 `verification.md` §2）                                                                                                                                                                        |
+| 5    | `build`      | {{FRAMES}} 帧 + `NN-slug.motion.json` + `index.html`（v2 项目另有 `tools/theme.json` / `tools/assemble-table.json` / `ledger.json`） | 门禁链 v2 全绿：`lint` 0/0 · `audit-frames` 0 finding · `sync --check` N/N · `verify-timeline` 0 error · `seam-gate verify` 绿（v2 项目；旧片跳过）· `check` 三项自证（`samples` / `contrast.checked` / `duration`，且带 `--out`） |
 
 门禁命令一律以 `.mjs` 脚本表示，**统一入口**见 §4。
 
@@ -106,13 +107,13 @@
    末帧额外留白：+1.6s（尾部定格收尾）
    ```
 
-   | 帧 | 旁白 | 槽位 | 槽位−旁白 |
-   |---|---|---|---|
-   | 01 | 8.266 | 11.0 | 2.734 |
-   | 02 | 16.126 | 18.8 | 2.674 |
-   | 03 | 17.287 | 20.0 | 2.713 |
-   | … | … | … | …（12 帧全部 2.67–2.73） |
-   | 12 | 18.762 | 23.1 | 4.338 ← 末帧留白 |
+   | 帧  | 旁白   | 槽位 | 槽位−旁白                |
+   | --- | ------ | ---- | ------------------------ |
+   | 01  | 8.266  | 11.0 | 2.734                    |
+   | 02  | 16.126 | 18.8 | 2.674                    |
+   | 03  | 17.287 | 20.0 | 2.713                    |
+   | …   | …      | …    | …（12 帧全部 2.67–2.73） |
+   | 12  | 18.762 | 23.1 | 4.338 ← 末帧留白         |
 
    合计：旁白 **210.09s**，槽位 **244.1s**，差 **34.0s**。
 
@@ -137,41 +138,43 @@
 
 ## 3 · 已实测的项目事实（写文档/脚本时直接引用，不要再猜）
 
-| 事实 | 值 |
-|---|---|
-| 画布 | 1920×1080 @ 30fps，`data-resolution="landscape"` |
-| 成片总长 | **244.1s**（12 帧 / 7323 帧）— **本条取自成片与 index.html，权威**；帧数是本项目实例，不是规范 |
-| 旁白总长 | **210.09s** / 12 条（wav 头实测，22050Hz·16bit·mono）；单条 8.266–22.166s |
-| 槽位余量 | 槽位 − 旁白 = **2.67–2.73s**（12 帧一致）；末帧 +4.338s（尾部留白） |
-| ✅ 记录已闭环 | 该项目三份档案曾写 195s / 153.88s / 3m15s（旁白重建**前**旧值），已按 §2 时间闭环回写为 **244.1s / 210.09s**；保留为"回写漏做 → 补齐"的教学实例 |
-| 色调令牌 | paper `#F1EDE4` · paper-deep `#E3DCCC` · **paper-shadow `#DED6C4`（垫纸用，实测 10/12 帧）** · ink `#121212` · ink-soft `#514C44` · rule `#C9C2B4` · accent `#1D4ED8` · signal `#E23A2E` · marker `#FFD400` |
-| 字体 | Noto Sans SC（100–900 VF，display 900 / body 400）· JetBrains Mono（400/700）· Caveat 700（手绘）· Microsoft YaHei（`local()` 兜底） |
-| 材料图尺寸 | 满幅 2× 截屏 **3788×1960**；裁切派生的材料用其自身尺寸（实例：`ui-tasks-a11.png` = 1380×770、`ui-patch-a12.png` = 1265×890） |
-| 手绘 viewBox | **= 该 `<img>` 自身的像素空间**（不是写死 3788×1960）。需要放大时给同一像素空间一个窗口，如 `viewBox="300 250 3280 1640"` + `preserveAspectRatio="xMinYMin meet"` |
-| 手绘路径样式 | 默认红笔 `fill:none;stroke:#e23a2e;stroke-width:6;stroke-linecap:round`；**落在暗底/墨块内改粉白 `stroke:#f1ede4`**（实例：第 12 帧代码块） |
-| 手绘描画 | 用 `getTotalLength()` 的 dash 逐笔画出 |
-| 材料框 | `3px solid #121212`（12 帧一致）；细线 `border-bottom:1px solid #c9c2b4`；重线 `border-top:3px solid #121212` |
-| 音轨分层 | 帧槽位 `data-track-index="1"`，地面层 `"0"`，旁白 `"10"`，音效 `"11"` |
-| 旁白入点 | 槽位开始后 0.3s |
-| 音效数量 | 7 个稀疏标点（不是垫床）——VOX 的克制用法 |
-| 素材基准 | 帧内 `src` 写**项目根相对**路径，如 `.media/assets/ui-roster.png`、`assets/fonts/...` |
-| 时间轴注册 | `window.__timelines["<composition-id>"] = tl;`（非 paused），末尾 `tl.seek(0)` |
-| `#root` 定位模型 | **必须 `position: relative` + 显式 `1920×1080`**，且 `html, body { margin:0 }`。漏了它，帧内绝对定位元素会落回普通流（`pitfalls.md` §16） |
-| 深底文字入场 | 用「只位移不透明」的 `show()`，不用 `fade()`（否则对比度审计会在淡入中途采样，`pitfalls.md` §18） |
+| 事实                                | 值                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 画布                                | 1920×1080 @ 30fps，`data-resolution="landscape"`                                                                                                                                                                                                                                                                                                                                                                                            |
+| 成片总长                            | **244.1s**（12 帧 / 7323 帧）— **本条取自成片与 index.html，权威**；帧数是本项目实例，不是规范                                                                                                                                                                                                                                                                                                                                              |
+| 旁白总长                            | **210.09s** / 12 条（wav 头实测，22050Hz·16bit·mono）；单条 8.266–22.166s                                                                                                                                                                                                                                                                                                                                                                   |
+| 槽位余量                            | 槽位 − 旁白 = **2.67–2.73s**（12 帧一致）；末帧 +4.338s（尾部留白）                                                                                                                                                                                                                                                                                                                                                                         |
+| ✅ 记录已闭环                       | 该项目三份档案曾写 195s / 153.88s / 3m15s（旁白重建**前**旧值），已按 §2 时间闭环回写为 **244.1s / 210.09s**；保留为"回写漏做 → 补齐"的教学实例                                                                                                                                                                                                                                                                                             |
+| 色调令牌                            | paper `#F1EDE4` · paper-deep `#E3DCCC` · **paper-shadow `#DED6C4`（垫纸用，实测 10/12 帧）** · ink `#121212` · ink-soft `#514C44` · rule `#C9C2B4` · accent `#1D4ED8` · signal `#E23A2E` · marker `#FFD400`                                                                                                                                                                                                                                 |
+| 字体                                | Noto Sans SC（100–900 VF，display 900 / body 400）· JetBrains Mono（400/700）· Caveat 700（手绘）· Microsoft YaHei（`local()` 兜底）                                                                                                                                                                                                                                                                                                        |
+| 材料图尺寸                          | 满幅 2× 截屏 **3788×1960**；裁切派生的材料用其自身尺寸（实例：`ui-tasks-a11.png` = 1380×770、`ui-patch-a12.png` = 1265×890）                                                                                                                                                                                                                                                                                                                |
+| 手绘 viewBox                        | **= 该 `<img>` 自身的像素空间**（不是写死 3788×1960）。需要放大时给同一像素空间一个窗口，如 `viewBox="300 250 3280 1640"` + `preserveAspectRatio="xMinYMin meet"`                                                                                                                                                                                                                                                                           |
+| 手绘路径样式                        | 默认红笔 `fill:none;stroke:#e23a2e;stroke-width:6;stroke-linecap:round`；**落在暗底/墨块内改粉白 `stroke:#f1ede4`**（实例：第 12 帧代码块）                                                                                                                                                                                                                                                                                                 |
+| 手绘描画                            | 用 `getTotalLength()` 的 dash 逐笔画出                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 材料框                              | `3px solid #121212`（12 帧一致）；细线 `border-bottom:1px solid #c9c2b4`；重线 `border-top:3px solid #121212`                                                                                                                                                                                                                                                                                                                               |
+| 音轨分层                            | 帧槽位 `data-track-index="1"`，地面层 `"0"`，旁白 `"10"`，音效 `"11"`                                                                                                                                                                                                                                                                                                                                                                       |
+| 旁白入点                            | 槽位开始后 0.3s                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 音效数量                            | 7 个稀疏标点（不是垫床）——VOX 的克制用法                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **纸 ASMR 轨（新增，`issues/19`）** | `data-track-index="12"`（**独立于 `11`**，便于独立计数与调平）；`.media/audio/asmr/*.wav`；**PCM s16le / 48kHz / mono / ≤2.5s / 峰值 −18~−14 dBFS（转场处可到 −10）/ `data-volume` 0.15–0.4**；每种 ≥2 变体、冻结入库、进 `manifest.jsonl` 带 `license`；**入点只许落槽位余量（≈2.7s 静默），3–8 处/片**；**不做全片底噪**；**绝不放 `.media/audio/voice/`**（会被 `verify-timeline` 当旁白）；**ASMR 不 ducking 口播**（改入点，不压旁白） |
+| 内置库音效响度                      | ⚠️ `media-use` 内置 19 件 Pixabay 库**母带极响**（实测 `impact-bass-1` mean −5.0 / max −0.4dB，旁白 mean −18.1 / max −1.5dB = **响 13dB**）→ **入库前必须归一化到峰值 ≤ −14 dBFS** 并配 `data-volume` 0.15–0.35；ffmpeg 合成音相反**偏静**（max ≈ −19.5dB），需补 makeup gain                                                                                                                                                               |
+| 素材基准                            | 帧内 `src` 写**项目根相对**路径，如 `.media/assets/ui-roster.png`、`assets/fonts/...`                                                                                                                                                                                                                                                                                                                                                       |
+| 时间轴注册                          | `window.__timelines["<composition-id>"] = tl;`（非 paused），末尾 `tl.seek(0)`                                                                                                                                                                                                                                                                                                                                                              |
+| `#root` 定位模型                    | **必须 `position: relative` + 显式 `1920×1080`**，且 `html, body { margin:0 }`。漏了它，帧内绝对定位元素会落回普通流（`pitfalls.md` §16）                                                                                                                                                                                                                                                                                                   |
+| 深底文字入场                        | 用「只位移不透明」的 `show()`，不用 `fade()`（否则对比度审计会在淡入中途采样，`pitfalls.md` §18）                                                                                                                                                                                                                                                                                                                                           |
 
 ### 第二个数据点（`freetoken-v013-vox`）—— 用来判断「哪些是实例、哪些是规律」
 
-| 事实 | 第一个数据点（dsh，参考实例） | 第二个数据点（freetoken） |
-|---|---|---|
-| 帧数 | 12 | **12**（但分段不同：`3+4+1+1+2+1`，机制 4 条、演示 2 步） |
-| 成片总长 | 244.1s | **267.4s** |
-| 旁白总长 / 引擎 | 210.09s / edge-tts | **233.472s / IndexTTS 2.5 零样本克隆** |
-| 单条旁白 | 8.266–22.166s | **8.057–26.706s** |
-| 槽位余量 | 2.67–2.73s | **2.70–2.78s**（同一条规律，独立复现） |
-| wav 规格 | 22050Hz·16bit·mono | **24000Hz·16bit·mono** |
-| 音轨 | 7 个稀疏音效 | **7 个稀疏音效**（ffmpeg 确定性合成，无配乐） |
-| 同步方式 | `beat-*`（停顿 + 比例插值） | **词级对齐**（12 帧 / 97 条线索全命中）→ `voice-sync.md` |
-| 渲染 | 690.8s，需设 `PRODUCER_STREAMING_ENCODE_MAX_DURATION_SECONDS` | 267.4s，**同样必须设**（默认 240 会挡） |
+| 事实            | 第一个数据点（dsh，参考实例）                                 | 第二个数据点（freetoken）                                 |
+| --------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
+| 帧数            | 12                                                            | **12**（但分段不同：`3+4+1+1+2+1`，机制 4 条、演示 2 步） |
+| 成片总长        | 244.1s                                                        | **267.4s**                                                |
+| 旁白总长 / 引擎 | 210.09s / edge-tts                                            | **233.472s / IndexTTS 2.5 零样本克隆**                    |
+| 单条旁白        | 8.266–22.166s                                                 | **8.057–26.706s**                                         |
+| 槽位余量        | 2.67–2.73s                                                    | **2.70–2.78s**（同一条规律，独立复现）                    |
+| wav 规格        | 22050Hz·16bit·mono                                            | **24000Hz·16bit·mono**                                    |
+| 音轨            | 7 个稀疏音效                                                  | **7 个稀疏音效**（ffmpeg 确定性合成，无配乐）             |
+| 同步方式        | `beat-*`（停顿 + 比例插值）                                   | **词级对齐**（12 帧 / 97 条线索全命中）→ `voice-sync.md`  |
+| 渲染            | 690.8s，需设 `PRODUCER_STREAMING_ENCODE_MAX_DURATION_SECONDS` | 267.4s，**同样必须设**（默认 240 会挡）                   |
 
 **读法**：帧数、时长、余量都是实例取值；**跨项目稳定的是「槽位余量 ≈ 2.7s」、7 个稀疏音效、
 30fps 1920×1080、以及那条长片渲染闸门** —— 第二个数据点把这几条各复现了一次。
@@ -216,10 +219,10 @@
 
 `templates/` 里的 `{{…}}` 分两类，**别混**：
 
-| 形式 | 含义 | 谁来填 |
-|---|---|---|
-| `{{TITLE}}` `{{FRAMES}}` `{{TOTAL}}` `{{CHANNEL_TAG}}` `{{AUDIENCE}}` | **文档级**参数，全项目一个值 | `init-vox-project.mjs` 已自动替换 |
-| `{{COMPOSITION_ID}}` `{{DURATION}}` `{{NN}}` `{{FRAME_NN}}` `{{slug}}` `{{HEADLINE}}` `{{RULE_1}}` `{{RULE_2}}` | **逐帧**参数，每帧不同 | 作者**逐帧**替换（`_templates/frame-skeleton.html` 复制 N 份，每份填成对应帧） |
+| 形式                                                                                                            | 含义                         | 谁来填                                                                         |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| `{{TITLE}}` `{{FRAMES}}` `{{TOTAL}}` `{{CHANNEL_TAG}}` `{{AUDIENCE}}`                                           | **文档级**参数，全项目一个值 | `init-vox-project.mjs` 已自动替换                                              |
+| `{{COMPOSITION_ID}}` `{{DURATION}}` `{{NN}}` `{{FRAME_NN}}` `{{slug}}` `{{HEADLINE}}` `{{RULE_1}}` `{{RULE_2}}` | **逐帧**参数，每帧不同       | 作者**逐帧**替换（`_templates/frame-skeleton.html` 复制 N 份，每份填成对应帧） |
 
 `init-vox-project.mjs` 只对**文档级**占位符做替换，逐帧占位符**故意保留**在
 `_templates/` 里（它退出时会分别报告"文档级残留"=失败、"逐帧残留"=预期）。
@@ -232,6 +235,7 @@
 `verify-timeline` 当成一条真旁白，产生"找不到所属槽位"的连锁误报。
 
 推论（两条都踩过）：
+
 1. 注释里的槽位/旁白元素会**污染**门禁结果 —— 模板里的结构示例一律写成**缩进文本**，不写标签。
 2. 不要把占位符放进 HTML 注释里：替换后 `<!-- …{{X}}… -->` 会变成 `--{{X}}-->` 这类破损注释。
    所以 `index-timeline.html` 的示例区**不含任何 `{{…}}`**。
@@ -248,28 +252,39 @@
 **`hf.mjs check` 额外使用 `3` = 未自验证**（未传 `--out`，无法程序化核对 `samples/contrast/duration`），
 脚本与 CI 必须把 `3` 视为**未通过**。
 
-| 脚本 | 用途 | 调用 | 通过判据 |
-|---|---|---|---|
-| `init-vox-project.mjs` | 从 templates 起一个项目骨架 | `node <skill>/scripts/init-vox-project.mjs <targetDir> [--theme paper\|terminal-dark\|minimal-swiss]` | 目录建好，无 `{{` 残留 |
-| `draft-voice-timeline.mjs` | 前置文案时序推导与打样 | `node <skill>/scripts/draft-voice-timeline.mjs [--project .] [--draft-tts] [--update-storyboard --force]` | 产出各帧预估槽位与节奏诊断（覆写需 `--force`） |
-| `gen-vox-annotation.mjs` | DOM/坐标锚定手绘 SVG 生成器 | `node <skill>/scripts/gen-vox-annotation.mjs --rect "x,y,w,h" [--shape box\|circle\|underline\|arrow] [--fit]` | 产出确定性 SVG path 及配套 GSAP 动效 |
-| `audit-frames.mjs` | 静态扫 9 条已知坑（支持 --frame 单帧） | `node <skill>/scripts/audit-frames.mjs [--project .] [--frame NN] [--json]` | `findings: 0` |
-| `sync-frame-durations.mjs` | 时长对齐与侧车同步（支持 --frame 单帧） | `node <skill>/scripts/sync-frame-durations.mjs [--project .] [--frame NN] [--check]` | `已核对帧数 == 目标帧数`（同时同步 `.motion.json`） |
-| `verify-timeline.mjs` | 槽位 vs 旁白真实时长 | `node <skill>/scripts/verify-timeline.mjs [--project .] [--json]` | 每帧 `slot - voice >= 0`（允许至多 0.5s 的呼吸余量以下） |
-| `verify-film-audio.mjs` | 语音 vs 杂音判别 | `node <skill>/scripts/verify-film-audio.mjs <media> <start> <dur>` | 语音 **CV ≥ 0.7**（克隆音/AAC；edge-tts 源 ≥ 0.9）且静音帧 25–48%；灰区补 ASR 内容级对稿（见 `verification.md` §5） |
-| `hf.mjs` | 门禁 CLI 包装（lint/check/snapshot） | `node <skill>/scripts/hf.mjs <lint\|check\|snapshot> [args] [--out <file>]` | `lint: 0 error / 0 warning; check: samples>0 && contrast>0 && duration>0 && 0 error (未传 --out 返回 3)` |
+| 脚本                       | 用途                                                                         | 调用                                                                                                           | 通过判据                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `init-vox-project.mjs`     | 从 templates 起一个项目骨架                                                  | `node <skill>/scripts/init-vox-project.mjs <targetDir> [--theme paper\|collage\|terminal-dark\|minimal-swiss]` | 目录建好，无 `{{` 残留                                                                                   |
+| `draft-voice-timeline.mjs` | 前置文案时序推导与打样                                                       | `node <skill>/scripts/draft-voice-timeline.mjs [--project .] [--draft-tts] [--update-storyboard --force]`      | 产出各帧预估槽位与节奏诊断（覆写需 `--force`）                                                           |
+| `gen-vox-annotation.mjs`   | DOM/坐标锚定手绘 SVG 生成器                                                  | `node <skill>/scripts/gen-vox-annotation.mjs --rect "x,y,w,h" [--shape box\|circle\|underline\|arrow] [--fit]` | 产出确定性 SVG path 及配套 GSAP 动效                                                                     |
+| `audit-frames.mjs`         | 静态扫已知坑 + v2 门禁（主题/焦点/装配/密度/账本/生成物；支持 --frame 单帧） | `node <skill>/scripts/audit-frames.mjs [--project .] [--frame NN] [--json]`                                    | `findings: 0`（error 与 warning 均须为 0）                                                               |
+| `sync-frame-durations.mjs` | 时长对齐与侧车同步（支持 --frame 单帧）                                      | `node <skill>/scripts/sync-frame-durations.mjs [--project .] [--frame NN] [--check]`                           | `已核对帧数 == 目标帧数`（同时同步 `.motion.json`）                                                      |
+| `verify-timeline.mjs`      | 槽位 vs 旁白真实时长                                                         | `node <skill>/scripts/verify-timeline.mjs [--project .] [--json]`                                              | 每帧 `slot - voice >= 0`（允许至多 0.5s 的呼吸余量以下）                                                 |
+| `verify-film-audio.mjs`    | 语音 vs 杂音判别                                                             | `node <skill>/scripts/verify-film-audio.mjs <media> <start> <dur>`                                             | 语音 **CV ≥ 0.9** 且静音帧 **25–65%**；`gray`（0.7–0.9）必须补 ASR 内容级对稿（见 `verification.md` §5） |
+| `hf.mjs`                   | 门禁 CLI 包装（lint/check/snapshot）                                         | `node <skill>/scripts/hf.mjs <lint\|check\|snapshot> [args] [--out <file>]`                                    | `lint: 0 error / 0 warning; check: samples>0 && contrast>0 && duration>0 && 0 error (未传 --out 返回 3)` |
+
+> **v2 依赖模块**（`init` 一并复制进 `tools/`，与生成器同源，不单列命令）：
+> `gate-tier.mjs`（**产物存在性分档** —— 所有 v2 门禁经它决定 `error`/`warning`/`info`，缺产物绝不判红）·
+> `theme.mjs`（令牌源：`themes/<name>.json` → `tools/theme.json`，生成器只读它）·
+> `motion-const.mjs`（`NARRATION_LEAD=0.3` / `DEFAULT_LEAD=0.2` / `RENDER_FPS=30` + 11 个动效契约常量）。
+>
+> **门禁链第 6 道 `seam-gate.mjs`** 在 **`motion-doctrine/scripts/`**（不随 vox 复制，需无头 Chrome）：
+> `node <motion-doctrine>/scripts/seam-gate.mjs verify --ledger ledger.json --project . [--json]`。
 
 **作者侧脚本**（不是通用门禁，随项目初始化复制进 `tools/`；列在这里是为了名字与签名统一）：
 
-| 脚本 | 用途 | 调用 | 通过判据 |
-|---|---|---|---|
-| `slots.mjs` | **槽位表的唯一计算处**（读 `.media/voice-manifest.json` 的 wav 头真值，十分之一秒整数累加避免浮点漂移） | 被 `gen-frames.mjs` / `gen-index.mjs` import | 无独立输出；`TOTAL` 应等于 `index.html` 根 `data-duration` |
-| `gen-frames.mjs` | **按 `frames-data.mjs` 生成 N 帧 + N 个侧车**；含 `buildFrame()` 契约套件与 `autoPosition()` | `node tools/gen-frames.mjs` | 打印每帧 `slot / 线索数`；`autoPosition` 命中的选择器逐条列出 |
-| `gen-index.mjs` | **装配 `index.html`**（槽位 + 旁白轨 + 音效轨） | `node tools/gen-index.mjs` | 槽位数 == 帧数；总长 == `slots.mjs` 的 `TOTAL` |
-| `ink.mjs` | 确定性手绘路径（`inkCircle` / `inkUnderline` / `inkArrow` / `inkRect` / `inkCheck` / `inkSlash`） | 被 `frames-data.mjs` import | 同一 seed 每次产出同一条 path |
-| `synthesize_voice.py` | 旁白合成 + 量真实秒数 + 写 `.media/voice-manifest.json`（支持 `--frame NN` 单条重跑并并回清单） | `python tools/synthesize_voice.py [--frame NN] [--list]` | 每条合成成功且 wav 头可读；合计秒数与清单一致 |
-| `align-cues.py` | **词级对齐**：`SCRIPT.md` + `tools/cues.json` + faster-whisper → `tools/cue-times.json` | `python tools/align-cues.py --model medium [--frame NN]` | 线索 N/N 命中；打印 `align_hit` 与逐帧 ASR 转写 |
-| `shot.ps1` | 本机 Chrome 无头实拍真实页面（2× → 3788×1960） | `powershell -File tools/shot.ps1 -Url <url> -Out <png> [-Height 980]` | 输出文件存在且 `ffprobe` 报出预期尺寸 |
+| 脚本                  | 用途                                                                                                                                                                                                                                                     | 调用                                                                                                                                                 | 通过判据                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `slots.mjs`           | **槽位表的唯一计算处**（读 `.media/voice-manifest.json` 的 wav 头真值，十分之一秒整数累加避免浮点漂移）                                                                                                                                                  | 被 `gen-frames.mjs` / `gen-index.mjs` import                                                                                                         | 无独立输出；`TOTAL` 应等于 `index.html` 根 `data-duration`                                                  |
+| `gen-frames.mjs`      | **按 `frames-data.mjs` 生成 N 帧 + N 个侧车**；含 `buildFrame()` 契约套件与 `autoPosition()`                                                                                                                                                             | `node tools/gen-frames.mjs`                                                                                                                          | 打印每帧 `slot / 线索数`；`autoPosition` 命中的选择器逐条列出                                               |
+| `gen-index.mjs`       | **装配 `index.html`**（槽位 + 旁白轨 + 音效轨 + **纸 ASMR 轨 12**，读可选 `tools/asmr.json`）                                                                                                                                                            | `node tools/gen-index.mjs`                                                                                                                           | 槽位数 == 帧数；总长 == `slots.mjs` 的 `TOTAL`；ASMR 入点不落进旁白窗口                                     |
+| `gen-asmr.mjs`        | **纸 ASMR 素材生成器（通道 C）**：6 种（卡纸敲/胶带压/章砰/橡皮章落/钉咔/**线嘶**）用 `lavfi` + 固定 `seed` 确定性合成；`--with-fallbacks` 补纸滑/房间底噪的合成近似版；`--only <slug,…>` 只重生成指定项                                                 | `node tools/gen-asmr.mjs [--with-fallbacks] [--only <slug,…>] [--write-manifest] [--force]`                                                          | PCM s16le · 48k · mono · ≤2.5s · 峰值 **−18 ~ −14 dBFS**；同 ffmpeg+seed 产出同字节                         |
+| `gen-asset.mjs`       | **生成资产命名桥**：调公共技能 `media-use` 的 comfyui provider 出氛围/转场/封面图 → 改名为 `.media/assets/gen-<role>-<nn>.png` → 追加 vox 账本的 `tier:"M5"` 行（`model`/`seed`/`refs`/`license`）；一致性 = 中性锚图 + 固定 seed + 每张从锚图做参考编辑 | `node tools/gen-asset.mjs --role <anchor\|mood\|transition\|cover> --intent "<…>" [--ref <锚图>] [--seed 20260923] [--width --height] [--self-test]` | 产物落 `.media/assets/gen-<role>-<nn>.png`；账本行含 `tier:"M5"`/`model`/`seed`/`license`；`--self-test` OK |
+| `ink.mjs`             | 确定性手绘路径（6 个旧生成器 + 两档 **`inkStroke` / `inkMarkup`**：`normal` 多描 ×3 · `highlight` 收锋 24 段 + 顿点 + 细尾 + 干笔）                                                                                                                      | 被 `frames-data.mjs` import                                                                                                                          | 同一 seed 每次产出同一条 path；产物必须共用一个 `<g data-ink=…>`（`pitfalls.md` §20）                       |
+| `torn.mjs`            | 确定性**低频撕边** `clip-path`（`TORN_FREQ` 每边 3–4 点 · `TORN_AMP` 按宽度分档 `soft/mat/wide` · 含 1–2 处长裂口）                                                                                                                                      | `torn(w,{seed,tier})` / `tornClip(w,{seed})`；被 `frames-data.mjs` import                                                                            | 输出 `%` 坐标 polygon；元素带 `data-torn` + 内联 `clip-path`（`pitfalls.md` §22）                           |
+| `synthesize_voice.py` | 旁白合成 + 量真实秒数 + 写 `.media/voice-manifest.json`（支持 `--frame NN` 单条重跑并并回清单）                                                                                                                                                          | `python tools/synthesize_voice.py [--frame NN] [--list]`                                                                                             | 每条合成成功且 wav 头可读；合计秒数与清单一致                                                               |
+| `align-cues.py`       | **词级对齐**：`SCRIPT.md` + `tools/cues.json` + faster-whisper → `tools/cue-times.json`                                                                                                                                                                  | `python tools/align-cues.py --model medium [--frame NN]`                                                                                             | 线索 N/N 命中；打印 `align_hit` 与逐帧 ASR 转写                                                             |
+| `shot.ps1`            | 本机 Chrome 无头实拍真实页面（2× → 3788×1960）                                                                                                                                                                                                           | `powershell -File tools/shot.ps1 -Url <url> -Out <png> [-Height 980]`                                                                                | 输出文件存在且 `ffprobe` 报出预期尺寸                                                                       |
 
 > **作者侧脚本的纪律**：`tools/cues.json` 是**手写的唯一来源**；`tools/cue-times.json` 是**机器产物、不许手改**；
 > 帧里**不许写死秒数**。三者一旦互相污染，同步就再也复现不出来（详见 `voice-sync.md`）。
@@ -288,28 +303,33 @@
 # 0 · 改完 frames-data.mjs / cues.json 之后，先生成产物（顺序不能反）
 python tools/synthesize_voice.py          # 旁白 → .media/voice-manifest.json
 python tools/align-cues.py --model medium # 线索 → tools/cue-times.json
-node   tools/gen-frames.mjs               # 帧 + 侧车（构建时注入 CUE 表）
-node   tools/gen-index.mjs                # index.html（槽位 + 旁白轨 + 音效轨）
+node   tools/gen-frames.mjs               # 帧 + 侧车 + tools/assemble-table.json
+node   tools/gen-index.mjs                # index.html（槽位 + 旁白轨 + 音效轨 + 纸 ASMR 轨）+ ledger.json
+node   tools/gen-asmr.mjs                 # 纸 ASMR 素材（通道 C；纸滑/房间底噪走通道 G 手动入库；线嘶 走 C —— 盲听结论）
 
-# 1 · 槽位与侧车同步（自动同步 HTML data-duration 与 .motion.json duration_s）
+# 1 · 槽位与侧车同步（先修后验；自动同步 HTML data-duration 与 .motion.json duration_s）
 node <skill>/scripts/sync-frame-durations.mjs
 
-# 2 · 静态结构与一致性审计（期望 findings: 0）
+# 2 · 结构 + 静态审计 + v2 门禁（期望 0 error / 0 warning；期望 findings: 0）
+node <skill>/scripts/hf.mjs lint --json
 node <skill>/scripts/audit-frames.mjs --json
 
-# 2.5 · 复核时长与侧车 0 漂移（期望 N/N frames ok）
+# 3 · 复核时长与侧车 0 漂移（期望 N/N frames ok）
 node <skill>/scripts/sync-frame-durations.mjs --check
 
-# 3 · 静态结构（期望 ok=true，0 error / 0 warning）
-node <skill>/scripts/hf.mjs lint --json
+# 4 · 时间轴：槽位 vs 真实旁白（期望 0 error）
+node <skill>/scripts/verify-timeline.mjs --json
 
-# 4 · 浏览器门禁（包装已带 --no-browser-gpu；--out 自动完成三项计数自核对，未传则返回退出码 3）
+# 5 · 接缝渲染闸 —— 门禁链第 6 道（需无头 Chrome；仅 v2 项目有 ledger.json）
+node <motion-doctrine>/scripts/seam-gate.mjs verify --ledger ledger.json --project . --json
+
+# 6 · 浏览器门禁（包装已带 --no-browser-gpu；--out 自动完成三项计数自核对，未传则返回退出码 3）
 node <skill>/scripts/hf.mjs check --json --out .hyperframes/check-latest.json
 
-# 5 · 取快照看图（--no-end 必须带，否则会顺手把 end 帧也拍掉）
+# 7 · 取快照看图（--no-end 必须带，否则会顺手把 end 帧也拍掉）
 node <skill>/scripts/hf.mjs snapshot --at <全局秒> --no-end --timeout 30000 --output .hyperframes/snaps-x
 
-# 6 · 出片
+# 8 · 出片
 node ..\..\packages\cli\dist\cli.js render .
 ```
 

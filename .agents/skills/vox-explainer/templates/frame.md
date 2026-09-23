@@ -9,6 +9,15 @@ colors:
   accent: "#1D4ED8"
   signal: "#E23A2E"
   marker: "#FFD400"
+paper:
+  # C2（issues/15 四轮 → 落地 issues/19）：半调只落**图像与垫纸**，纸面（地面层）不铺网点。
+  # 下面三个 halftone-* 令牌供图像/垫纸的半调用；纸面只靠纸色 + grain-opacity 的纤维层。
+  halftone-pitch: 10
+  halftone-radius: 1.15
+  halftone-opacity: 0.12
+  grain-opacity: 0.13
+  pin-size: 14
+  cutout-shadow-offset: "3px 4px"
 typography:
   display:
     family: "Noto Sans SC"
@@ -23,10 +32,11 @@ typography:
     family: "JetBrains Mono"
     weight: 500
     usage: "包名、命令、字段名、编号标签；大写 + 0.12em 字距"
-spacing:
+layout:
   margin: "96px"
   gutter: "32px"
   radius: "0"
+focus: "（待填：声明本片每帧恰一个焦点元素 —— 门禁 focus_declaration 会量它；见 references/visual-grammar.md）"
 ---
 
 # Frame Design — {{TITLE}} · VOX 解说体系
@@ -43,7 +53,7 @@ spacing:
 
 ## The Frame
 
-- **底**：`paper`，带一层极轻的纸纹颗粒（build 阶段叠加，sketch 不画）。
+- **底**：`paper`，带一层极轻的纸纹颗粒（build 阶段叠加，sketch 不画）。**纸面不铺网点**（半调只落图像与垫纸）。
 - **焦点**：每帧一个大字主张或一张主卡，占 40% 以上画面重量；`accent` 蓝只落在焦点上。
 - **边缘锚**：左上角固定的频道标签，右上角帧编号（`NN / 总帧数`）；两者用 mono、小字号、
   `ink-soft`，永不抢焦点。
@@ -56,7 +66,7 @@ spacing:
 2. 术语首次出现必须配一句人话解释，字号不小于正文的 0.8 倍。
 3. 数字与字段名一律 mono + `tabular-nums`。
 4. 手绘标注（圈注、箭头、连接线）是唯一允许的"装饰"——它必须指向真实信息。
-5. 警示（红）与记号（黄）每帧合计不超过两处。
+5. 荧光笔（marker）配额**按信息块数量缩放**：信息屏 `≤ ceil(信息块数/3)`（至少 1），叙事拍 `1`；警示红（signal）出现即信号，不铺面。
 
 ## Do / Don't
 
