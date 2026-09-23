@@ -69,6 +69,7 @@ node <SKILL_DIR>/scripts/resolve.mjs --type lut --intent "teal orange blockbuste
 | `--image <path>`| Reference image for `--process`; repeat for multiple (up to 10)                      |
 | `--transparent` | Ask an image generator for a native alpha channel (RGBA PNG)                         |
 | `--raw-alpha`   | Keep the generator's alpha byte-for-byte instead of normalizing it                   |
+| `--followRefSize` | Reuse the first `--image` reference's framing/latent instead of a blank latent (`--process` edits; `comfyui` only; also `--follow-ref-size`) |
 | `--width/--height` | Generation size in px (snapped to a multiple of 32)                              |
 | `--steps`       | Sampling steps (`comfyui`: default 30; the official pipeline uses 40-50)             |
 | `--seed`        | Pin the seed for a reproducible generation                                           |
@@ -113,6 +114,25 @@ takes the first reference's framing. `--transparent` keeps the alpha channel
 across the edit. The result is registered exactly like a generated asset —
 same ledger, same provenance (including the reference count), same global-cache
 promotion — so an edited image is reusable across projects like any other.
+
+`--followRefSize` tells the graph to reuse the encoder's image-derived latent
+instead of a fresh blank one, so the edit inherits the reference's framing — the
+same behaviour the automatic default above already aims for, but at the graph
+level rather than by copying width/height.
+
+### Size gate: references + target share one budget
+
+The edit path holds every reference **and** the target latent in VRAM at once. On
+a 24GB card, `target + references` measured **~3.9MP passes** and **~4.2MP
+breaks** — and a breaking edit does **not** error: it returns high-frequency
+noise at a normal speed. To keep that from happening silently, the provider
+plans a **reference down-scale** before uploading when the combined pixels cross
+`EDIT_PIXEL_BUDGET` (4MP), caps references at 1024², and prints what it did to
+stderr (and records `ref_scale` / `ref_sizes` in provenance). If the **target
+alone** is already at the budget, no reference down-scale can save it, so it
+warns instead. Either way the passing recipe stands: **keep references ≤1024²**,
+and for a full-frame result either raise nothing and let the gate shrink the
+reference, or generate text-to-image (no reference → no combined budget).
 
 ### Alpha is normalized, not taken raw
 

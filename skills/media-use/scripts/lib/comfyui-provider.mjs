@@ -50,6 +50,86 @@ export function snapTo32(n, fallback = 1024) {
   return Math.max(32, Math.round(v / 32) * 32);
 }
 
+// --- edit VRAM budget -------------------------------------------------------
+//
+// The edit path holds every reference AND the target latent in VRAM at once, and
+// when their combined pixel count crosses the card's headroom the edit does NOT
+// fail: it returns high-frequency noise, at a normal speed and with no error
+// (issues/17 §7.2). Measured on a 24GB card: ~3.9MP passes, ~4.2MP breaks. The
+// budget below sits between those two, and `planEditRefs` computes the
+// reference down-scale that keeps a request under it. This is why "references
+// pre-shrunk to ≤1024²" is the project's standing recipe (issues/17 §7.3).
+
+/** Measured pass/fail boundary for "target + references" pixels (~3.9MP ok, ~4.2MP breaks). */
+export const EDIT_PIXEL_BUDGET = 4_000_000;
+
+/** Reference cap from the recipe: references are kept to ≤1024² (issues/17 §7.3). */
+export const EDIT_REF_EDGE_CAP = 1024;
+
+/** Plan against 90% of the cliff, not the cliff itself — the boundary is empirical. */
+const EDIT_BUDGET_MARGIN = 0.9;
+
+/**
+ * Decide how to keep an edit inside the VRAM budget.
+ *
+ * Returns `{ over: false }` when it already fits; otherwise `{ over: true,
+ * total, refPixels, scale }` where `scale` is the uniform factor to apply to
+ * every reference (never >1, never under-capped at 1024²) — or `null` when the
+ * target alone is over budget and shrinking references cannot help.
+ */
+export function planEditRefs({
+  refSizes,
+  targetPixels,
+  budget = EDIT_PIXEL_BUDGET,
+  edgeCap = EDIT_REF_EDGE_CAP,
+  margin = EDIT_BUDGET_MARGIN,
+} = {}) {
+  const known = (refSizes || []).filter(Boolean);
+  const refPixels = known.reduce((n, s) => n + s.width * s.height, 0);
+  const total = targetPixels + refPixels;
+  if (refPixels === 0 || total <= budget) return { over: false, total, refPixels };
+
+  const allowed = budget * margin - targetPixels;
+  if (allowed <= 0) return { over: true, total, refPixels, scale: null };
+
+  const byBudget = Math.sqrt(allowed / refPixels);
+  const byEdge = Math.min(...known.map((s) => edgeCap / Math.max(s.width, s.height)));
+  const scale = Math.min(byEdge, byBudget);
+  return { over: true, total, refPixels, scale: scale < 1 ? scale : null };
+}
+
+/** Scale a pixel size, rounded to even dimensions so chroma survives the resize. */
+export function scaledSize({ width, height }, scale) {
+  const even = (n) => Math.max(2, Math.round((n * scale) / 2) * 2);
+  return { width: even(width), height: even(height) };
+}
+
+/**
+ * Write a down-scaled copy of `srcPath` through ffmpeg and return its path. The
+ * copy lands beside the original so the caller's reference is left untouched.
+ */
+export function downscaleReference(srcPath, size, deps = {}) {
+  const { execFn = execFileSync, ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg" } = deps;
+  const dest = `${srcPath}.ref-${size.width}x${size.height}.png`;
+  execFn(
+    ffmpegPath,
+    [
+      "-y",
+      "-loglevel",
+      "error",
+      "-i",
+      srcPath,
+      "-vf",
+      `scale=${size.width}:${size.height}`,
+      "-frames:v",
+      "1",
+      dest,
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] },
+  );
+  return dest;
+}
+
 function weights(ctx) {
   return {
     unet: ctx?.comfyuiUnet || process.env.COMFYUI_UNET || DEFAULT_WEIGHTS.unet,
@@ -580,14 +660,43 @@ export async function comfyuiImageEdit(intent, ctx = {}, deps = {}) {
   // source aspect ratio; explicit width/height still win.
   let width = Number(ctx.width) || 0;
   let height = Number(ctx.height) || 0;
+  const refSizes = refs.map((ref) => readImageSize(readFileFn(ref)));
   if (!width || !height) {
-    const size = readImageSize(readFileFn(refs[0]));
+    const size = refSizes[0];
     width = size?.width || 1024;
     height = size?.height || 1024;
   }
 
+  // Keep "target + references" under the measured VRAM cliff. Over-budget edits
+  // come back as noise with no error, so shrink the references rather than let
+  // one through silently (issues/17 §7.2/§7.3).
+  const targetPixels = snapTo32(width) * snapTo32(height);
+  const plan = planEditRefs({ refSizes, targetPixels });
+  let uploadRefs = refs;
+  if (plan.over) {
+    const mp = (px) => (px / 1e6).toFixed(2);
+    if (plan.scale) {
+      console.error(
+        `media-use: edit target + references = ${mp(plan.total)}MP, over the ~${mp(
+          EDIT_PIXEL_BUDGET,
+        )}MP ComfyUI budget — down-scaling ${refSizes.filter(Boolean).length} reference(s) by ${plan.scale.toFixed(
+          2,
+        )}× to avoid a silent noise result (issues/17 §7.2).`,
+      );
+      uploadRefs = refs.map((ref, i) =>
+        refSizes[i] ? downscaleReference(ref, scaledSize(refSizes[i], plan.scale), deps) : ref,
+      );
+    } else {
+      console.error(
+        `media-use: edit target alone is ${mp(targetPixels)}MP, already at the ~${mp(
+          EDIT_PIXEL_BUDGET,
+        )}MP ComfyUI budget — lower --width/--height or the edit may return noise (issues/17 §7.2).`,
+      );
+    }
+  }
+
   const uploaded = [];
-  for (const ref of refs) uploaded.push(await uploadImage(url, ref, deps));
+  for (const ref of uploadRefs) uploaded.push(await uploadImage(url, ref, deps));
 
   const steps = Number(ctx.steps) > 0 ? Number(ctx.steps) : DEFAULT_STEPS;
   const seed = ctx.seed ?? 42;
@@ -619,6 +728,10 @@ export async function comfyuiImageEdit(intent, ctx = {}, deps = {}) {
       steps,
       seed,
       references: refs.length,
+      // Reference size is a reproduction input, not a nicety: the same seed
+      // against a differently-sized reference yields a different image.
+      ref_sizes: refSizes.map((s) => (s ? `${s.width}x${s.height}` : null)),
+      ...(plan.scale ? { ref_scale: Number(plan.scale.toFixed(3)) } : {}),
     },
   });
 }

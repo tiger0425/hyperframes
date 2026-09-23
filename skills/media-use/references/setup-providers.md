@@ -114,8 +114,12 @@ ComfyUI/models/vae/qwen_image_2.1_vae_bf16.safetensors
 Qwen-Image-2.1 needs a recent ComfyUI (native support landed with the model);
 verify with `resolve --type image --provider comfyui --intent "test"`. VRAM
 notes: the `int8_convrot` pair is ~16GB of weights — comfortable on a 24GB card
-at 1024², tight at the native 2048² (start lower and raise). Job and ready
-timeouts are `COMFYUI_JOB_TIMEOUT_MS` / `COMFYUI_READY_TIMEOUT_MS`.
+at 1024², tight at the native 2048² (start lower and raise). **Edits are tighter
+than generation**: `--process` loads the references *and* the target together,
+and an over-budget edit returns noise rather than an error — so the provider
+auto-down-scales over-budget references (see `references/resolve.md`, "Size
+gate"). Job and ready timeouts are `COMFYUI_JOB_TIMEOUT_MS` /
+`COMFYUI_READY_TIMEOUT_MS`.
 
 Both capabilities normalize the alpha channel on the way out through `ffmpeg`
 (already required by this skill) — see `references/resolve.md` for what that

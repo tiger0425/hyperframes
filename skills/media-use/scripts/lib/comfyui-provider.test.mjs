@@ -9,10 +9,14 @@ import {
   comfyuiImageGenerate,
   comfyuiLaunchCommand,
   comfyuiProbe,
+  downscaleReference,
+  EDIT_PIXEL_BUDGET,
   ensureComfyui,
   normalizeAlpha,
+  planEditRefs,
   readImageSize,
   runGraph,
+  scaledSize,
   snapTo32,
   wrapTransparentPrompt,
 } from "./comfyui-provider.mjs";
@@ -525,4 +529,120 @@ test("comfyuiImageEdit caps references at Qwen-Image-2.1's 10", async () => {
   assert.equal(queued.prompt.text.inputs["images.image_10"] !== undefined, true);
   assert.equal(queued.prompt.text.inputs["images.image_11"], undefined);
   assert.equal(calls.filter((c) => c.url.endsWith("/upload/image")).length, 10);
+});
+
+// --- edit VRAM budget (issues/17 §7.2) --------------------------------------
+
+test("EDIT_PIXEL_BUDGET sits between the measured pass (~3.9MP) and fail (~4.2MP)", () => {
+  // 1024² ref + 1920×1088 target = 3.14MP — the recipe's passing shape.
+  assert.equal(
+    planEditRefs({ refSizes: [{ width: 1024, height: 1024 }], targetPixels: 1920 * 1088 }).over,
+    false,
+  );
+  // 1920×1088 ref + 1792×1024 target = 3.92MP — also measured passing.
+  assert.equal(
+    planEditRefs({ refSizes: [{ width: 1920, height: 1088 }], targetPixels: 1792 * 1024 }).over,
+    false,
+  );
+  // 1920×1088 ref + 1920×1088 target = 4.18MP — the measured breaking shape.
+  const over = planEditRefs({
+    refSizes: [{ width: 1920, height: 1088 }],
+    targetPixels: 1920 * 1088,
+  });
+  assert.equal(over.over, true);
+  assert.ok(over.total > EDIT_PIXEL_BUDGET);
+  assert.ok(over.scale > 0 && over.scale < 1);
+  // Never upscales and always lands on the recipe's 1024² cap for a big ref.
+  assert.deepEqual(scaledSize({ width: 1920, height: 1088 }, over.scale), {
+    width: 1024,
+    height: 580,
+  });
+});
+
+test("planEditRefs is a no-op with no measurable reference, and unfixable target is flagged", () => {
+  assert.equal(planEditRefs({ refSizes: [null], targetPixels: 1920 * 1088 }).over, false);
+  assert.equal(planEditRefs({ refSizes: [], targetPixels: 1920 * 1088 }).over, false);
+  // A target alone beyond the budget cannot be fixed by shrinking references.
+  const unfixable = planEditRefs({
+    refSizes: [{ width: 1024, height: 1024 }],
+    targetPixels: 2048 * 2048,
+  });
+  assert.equal(unfixable.over, true);
+  assert.equal(unfixable.scale, null);
+});
+
+test("downscaleReference writes an ffmpeg-scaled copy beside the source", () => {
+  const runs = [];
+  const dest = downscaleReference(
+    "C:\\pics\\a.png",
+    { width: 1024, height: 580 },
+    { execFn: (bin, argv) => runs.push({ bin, argv }) },
+  );
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].bin, "ffmpeg");
+  assert.equal(runs[0].argv[runs[0].argv.indexOf("-vf") + 1], "scale=1024:580");
+  assert.equal(runs[0].argv.at(-1), dest);
+  assert.match(dest, /a\.png\.ref-1024x580\.png$/);
+});
+
+test("comfyuiImageEdit down-scales an over-budget reference instead of risking silent noise", async () => {
+  const { fetchFn } = stubFetch();
+  const execRuns = [];
+  const res = await comfyuiImageEdit(
+    "x",
+    { images: ["C:\\big.png"] },
+    {
+      fetchFn,
+      sleep: noSleep,
+      writeFileFn: () => {},
+      existsFn: () => true,
+      readFileFn: () => pngHeader(1920, 1088),
+      execFn: (bin, argv) => {
+        execRuns.push({ bin, argv });
+        return "";
+      },
+      renameFn: () => {},
+      unlinkFn: () => {},
+    },
+  );
+  // 1920×1088 ref + 1920×1088 target = 4.18MP → scaled, and the scale is recorded.
+  assert.ok(res.metadata.provenance.ref_scale > 0 && res.metadata.provenance.ref_scale < 1);
+  assert.deepEqual(res.metadata.provenance.ref_sizes, ["1920x1088"]);
+  assert.ok(
+    execRuns.some(
+      (r) =>
+        r.argv.includes("-vf") &&
+        String(r.argv[r.argv.indexOf("-vf") + 1]).startsWith("scale="),
+    ),
+  );
+});
+
+test("comfyuiImageEdit leaves a within-budget reference untouched", async () => {
+  const { fetchFn } = stubFetch();
+  const execRuns = [];
+  const res = await comfyuiImageEdit(
+    "x",
+    { images: ["C:\\ok.png"], width: 1024, height: 1024 },
+    {
+      fetchFn,
+      sleep: noSleep,
+      writeFileFn: () => {},
+      existsFn: () => true,
+      readFileFn: () => pngHeader(1024, 1024),
+      execFn: (bin, argv) => {
+        execRuns.push({ bin, argv });
+        return "";
+      },
+      renameFn: () => {},
+      unlinkFn: () => {},
+    },
+  );
+  assert.equal(res.metadata.provenance.ref_scale, undefined);
+  assert.ok(
+    !execRuns.some(
+      (r) =>
+        r.argv.includes("-vf") &&
+        String(r.argv[r.argv.indexOf("-vf") + 1]).startsWith("scale="),
+    ),
+  );
 });

@@ -94,6 +94,8 @@ const { values: args } = parseArgs({
     image: { type: "string", multiple: true },
     transparent: { type: "boolean", default: false },
     "raw-alpha": { type: "boolean", default: false },
+    "follow-ref-size": { type: "boolean", default: false },
+    followRefSize: { type: "boolean", default: false },
     width: { type: "string" },
     height: { type: "string" },
     steps: { type: "string" },
@@ -142,6 +144,9 @@ Options:
   --transparent   Ask an image generator for a native alpha channel (RGBA PNG)
   --raw-alpha     Keep the image generator's alpha byte-for-byte instead of
                   normalizing it (see references/resolve.md)
+  --followRefSize Reuse the first --image reference's framing/latent instead of
+                  a fresh blank one (--process edits; comfyui only). Also
+                  accepted as --follow-ref-size.
   --width --height --steps --seed   Generation overrides (px are snapped to 32)
   --json          Output JSON instead of one-line result
   --help, -h      Show this help`);
@@ -423,6 +428,7 @@ async function run() {
     seed: args.seed != null ? Number(args.seed) : undefined,
     transparent: args.transparent,
     rawAlpha: args["raw-alpha"],
+    followRefSize: args.followRefSize || args["follow-ref-size"],
     images: args.image || [],
   };
 
