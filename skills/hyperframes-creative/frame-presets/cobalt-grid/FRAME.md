@@ -38,7 +38,7 @@ typography:
   display-hero:{ fontFamily: "Newsreader", cqw: 10.4, weight: 400, lineHeight: 0.9, tracking: "-0.008em" }
   vbig-numeral:{ fontFamily: "Newsreader", cqw: 12.5, weight: 400, lineHeight: 0.9, tracking: "-0.015em" }
 
-spacing:
+layout:
   edge: "4cqw"          # standard frame edge inset (~80px@1920)
   pad-top: "7cqw"
   pad-bottom: "6cqw"
@@ -51,7 +51,7 @@ components:
     description: "Permanent graph-paper grid — never disabled; the canvas tone."
   hairlines:
     rule: "0.12cqw solid {colors.ink}"
-    placement: "≈3cqw from top + bottom, inset {spacing.edge}"
+    placement: "≈3cqw from top + bottom, inset {layout.edge}"
     description: "Two persistent cobalt rules framing every composition."
   page-chrome:
     typography: "{typography.pagenum}"

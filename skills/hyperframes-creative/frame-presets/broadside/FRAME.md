@@ -40,7 +40,7 @@ typography:
   fadelist-title:{ fontFamily: "Barlow", cqw: 10.5, weight: 900, lineHeight: 0.9, tracking: "-0.04em", lower: true }
   display: { fontFamily: "Barlow", cqw: 13.0, weight: 900, lineHeight: 0.88, tracking: "-0.04em", lower: true }
 
-spacing:
+layout:
   pad-x: "5.5cqw"
   pad-y: "5.5cqw"
   gap-lg: "3.5cqw"

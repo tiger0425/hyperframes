@@ -43,7 +43,7 @@ typography:
   background-numeral: { fontFamily: "Bebas Neue", cqw: 10.0, weight: 400, color: "rgba(0,0,0,0.12)", note: "wallpaper numeral inside a coral region" }
   giant-mark:    { fontFamily: "Bebas Neue", cqw: 14.0, weight: 400, color: "rgba(0,0,0,0.35)", note: "decorative quote mark inside a coral region" }
 
-spacing:
+layout:
   pad-x: "5cqw"       # standard horizontal frame padding
   pad-y: "4cqw"
   pad-col: "3cqw"

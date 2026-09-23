@@ -41,7 +41,7 @@ typography:
   headline:{ fontFamily: "Fredoka One", cqw: 4.5, lineHeight: 1.1, tracking: "0.02em" }
   display: { fontFamily: "Fredoka One", cqw: 6.5, lineHeight: 1.1, tracking: "0.02em" }
 
-spacing:
+layout:
   pad-slide: "3cqw"
   radius: "20px"
   radius-lg: "28px"
@@ -52,19 +52,19 @@ components:
   card:
     backgroundColor: "{colors.white}"
     border: "3px solid {colors.text-dark}"
-    rounded: "{spacing.radius} (28px featured)"
+    rounded: "{layout.radius} (28px featured)"
     shadow: "6px 6px 0 {colors.text-dark}"
     description: "The universal container; white-on-pastel is standard."
   framed-header:
     backgroundColor: "pastel cap + {colors.white} body"
     border: "3px solid {colors.text-dark} (one continuous)"
-    rounded: "{spacing.radius-lg}"
+    rounded: "{layout.radius-lg}"
     shadow: "6px 6px 0 {colors.text-dark}"
     description: "Pastel header strip flush above a white body — one unit, one shadow."
   badge-pill:
     backgroundColor: "{colors.butter}"
     border: "3px solid {colors.text-dark}"
-    rounded: "{spacing.radius-pill}"
+    rounded: "{layout.radius-pill}"
     typography: "{typography.badge}"
     shadow: "4px 4px 0 {colors.text-dark}"
     description: "Section tag. white-space:nowrap."

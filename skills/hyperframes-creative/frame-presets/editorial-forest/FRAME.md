@@ -37,7 +37,7 @@ typography:
   stat-figure-unit:{ fontFamily: "Source Serif 4", cqw: 5.7, weight: 500, lineHeight: 0.92 }
   name:    { fontFamily: "Source Serif 4", cqw: 2.3, weight: 600, lineHeight: 1.0 }
 
-spacing:
+layout:
   slide-pad: "5cqw"
   rule: "2px"
   rule-card: "2.5px"
@@ -61,14 +61,14 @@ components:
     description: "The identity stamp. Cover/summary only."
   topic-tile:
     backgroundColor: "{colors.green} (pink text) / {colors.pink} (green-deep) / {colors.green-lite} (pink) / {colors.cream-2} + 2px {colors.green} border (green)"
-    rounded: "{spacing.radius-card}"
+    rounded: "{layout.radius-card}"
     shadow: "none"
     typography: "{typography.caption-mono} ordinal + {typography.title-card-sm} + mono foot"
     description: "Fills rotate; never repeat one across a grid."
   step-tile:
     backgroundColor: "{colors.cream} + green border / {colors.green} / {colors.pink}"
     border: "2.5px solid"
-    rounded: "{spacing.radius-step}"
+    rounded: "{layout.radius-step}"
     typography: "mono ordinal + {typography.title-card} + {typography.body-card} + mono marker over a top rule"
     description: "Framework/process card."
   kpi-block:

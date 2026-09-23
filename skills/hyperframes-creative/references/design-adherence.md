@@ -7,7 +7,7 @@ If a design spec (`frame.md` / `design.md`) exists, read the HTML and check:
 1. **Colors** — every hex value in the composition appears in the spec's palette section (however the user labeled it: Colors, Palette, Theme, etc.). Flag any invented colors.
 2. **Typography** — font families and weights match the spec's type spec. No substitutions.
 3. **Corners** — border-radius values match the declared corner style, if specified.
-4. **Spacing** — padding and gap values fall within the declared density range, if specified.
+4. **Layout / Spacing** — padding and gap values fall within the declared density range, if specified (the token is `layout:` in `frame.md`, `spacing:` in `design.md`).
 5. **Depth** — shadow usage matches the declared depth level, if specified (flat = none, subtle = light, layered = glows).
 6. **Avoidance rules** — if the spec has a section listing things to avoid (commonly "What NOT to Do", "Don'ts", "Anti-patterns", or "Do's and Don'ts"), verify none are present.
 

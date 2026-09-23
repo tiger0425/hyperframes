@@ -38,7 +38,7 @@ typography:
   display:{ fontFamily: "Instrument Serif", cqw: 14.6, weight: 400, lineHeight: 0.86, tracking: "-0.018em" }
   numeral-jumbo:{ fontFamily: "Instrument Serif", cqw: 28.0, weight: 400, lineHeight: 0.84, tracking: "-0.04em" }
 
-spacing:
+layout:
   pad-edge: "4cqw"
   pad-region: "4.2cqw"
   gap-region: "2.5cqw"

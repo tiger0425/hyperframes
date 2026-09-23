@@ -46,7 +46,7 @@ typography:
   h1:      { fontFamily: "Space Grotesk", cqw: 4.2, weight: 700, lineHeight: 1.08, tracking: "-0.02em", color: "text" }
   quote-mark:{ fontFamily: "Space Grotesk", cqw: 8.0, weight: 700, lineHeight: 0.5, color: "primary", opacity: 0.15 }
 
-spacing:
+layout:
   pad-x: "5cqw"
   pad-y-top: "5cqw"
   gap-cards: "1.4cqw"

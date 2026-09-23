@@ -43,7 +43,7 @@ typography:
   display-cover:{ fontFamily: "EB Garamond", cqw: 9.9, weight: 400, lineHeight: 0.98, tracking: "-0.028em" }
   number-unit:{ fontFamily: "JetBrains Mono", cqw: 2.08, weight: 500, lineHeight: 1.0 }
 
-spacing:
+layout:
   slide-pad: "4.2cqw"   # ~80px @1920
   gap-md: "1.7cqw"
   hairline: "1px"
@@ -56,7 +56,7 @@ components:
   card-hairline:
     backgroundColor: "{colors.cream} or {colors.tile}"
     border: "1px solid {colors.ink}@12%"
-    rounded: "{spacing.radius-lg}"
+    rounded: "{layout.radius-lg}"
     shadow: "{shadows.card}"
     typography: "{typography.card-title} + {typography.body}"
     description: "The editorial content card. Elevation is the hairline + ONE soft warm shadow — never a heavy drop, glow, or gradient."
@@ -67,7 +67,7 @@ components:
   coral-callout:
     backgroundColor: "{colors.coral} (full-bleed) or {colors.cream} with a coral edge"
     textColor: "{colors.cream} on coral"
-    rounded: "{spacing.radius-md}"
+    rounded: "{layout.radius-md}"
     typography: "{typography.button} / {typography.h2}"
     description: "The ONE voltage moment per frame — the CTA, the single inline link, OR the full-bleed band. Never two corals in one frame."
   number-lockup:
@@ -83,7 +83,7 @@ components:
     backgroundColor: "{colors.navy} body / {colors.navy-elev} title bar + status strip"
     textColor: "{colors.cream} (JetBrains Mono); syntax in coral (keywords) / teal #5DB8A6 (strings) / amber #E8A55A (numbers)"
     border: "1px solid {colors.cream}@14%"
-    rounded: "{spacing.radius-md}"
+    rounded: "{layout.radius-md}"
     description: "The warm-navy code / terminal surface. The CODE ITSELF is rendered by the code-* registry blocks (code-diff / code-typing / code-snippet-*); this preset owns the surrounding surface, title bar, status strip, and mono chrome — not the code rendering."
   spike-mark:
     glyph: "✱ (U+2731), always {colors.coral}"

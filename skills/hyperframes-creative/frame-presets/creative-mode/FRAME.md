@@ -41,7 +41,7 @@ typography:
   display-xl: { fontFamily: "Archivo Black", cqw: 11.0, weight: 400, lineHeight: 0.9,  tracking: "-0.01em", upper: true }
   display-hero:{ fontFamily: "Archivo Black", cqw: 15.5,weight: 400, lineHeight: 0.84, tracking: "-0.02em", upper: true }
 
-spacing:
+layout:
   frame-pad: "3.3cqw"        # 64px chrome gutter @1920
   content-gutter: "5cqw"     # 96px content gutter @1920
   grid-gap: "1.5cqw"         # 28px
@@ -50,7 +50,7 @@ spacing:
 components:
   frame-chrome:
     typography: "{typography.mono-label}"
-    placement: "topbar 2.5cqw from top, meta 2.5cqw from bottom, both inset {spacing.frame-pad}"
+    placement: "topbar 2.5cqw from top, meta 2.5cqw from bottom, both inset {layout.frame-pad}"
     rounded: "0"
     shadow: "none"
     description: "Mono topbar (section label left + 999px ink-stroked pill right) + meta footer (descriptor left + NN • NN counter right, 0.5cqw ink dot divider). Present on most frames."
@@ -59,7 +59,7 @@ components:
     textColor: "{colors.cream} on accent · {colors.ink} on cream"
     border: "0.4cqw solid {colors.ink}"
     rounded: "0"
-    padding: "{spacing.cell-pad}"
+    padding: "{layout.cell-pad}"
     typography: "{typography.stat-num} + {typography.mono-label}"
     shadow: "none"
     description: "Flat accent/cream stat tile, square corners, no shadow."
@@ -67,7 +67,7 @@ components:
     backgroundColor: "{colors.cream} · {colors.pink} · {colors.yellow} · {colors.green}"
     border: "0.4cqw solid {colors.ink}"
     rounded: "0"
-    padding: "{spacing.cell-pad}"
+    padding: "{layout.cell-pad}"
     typography: "{typography.step-num} + {typography.step-title} + {typography.body-md}"
     shadow: "none"
     description: "Ink-bordered card; giant step-num top. Sequence alternates cream with accents and ENDS on green."

@@ -41,7 +41,7 @@ typography:
   closing-display:{ fontFamily: "Bodoni Moda", cqw: 8.5, weight: 800, lineHeight: 0.95, tracking: "-0.03em" }
   display:     { fontFamily: "Bodoni Moda", cqw: 12.0, weight: 800, lineHeight: 0.88, tracking: "-0.03em" }
 
-spacing:
+layout:
   pad: "5cqw"
   gap-md: "2cqw"
   card-pad: "2cqw 1.6cqw"

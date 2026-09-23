@@ -37,7 +37,7 @@ typography:
   h1:          { fontFamily: "Playfair Display", cqw: 6.2, weight: 400, lineHeight: 1.06 }
   display:     { fontFamily: "Playfair Display", cqw: 8.0, weight: 400, lineHeight: 1.04 }
 
-spacing:
+layout:
   pad-x: "7cqw"
   pad-y: "5cqw"
   gap-xl: "6cqw"

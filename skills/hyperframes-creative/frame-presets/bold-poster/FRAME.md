@@ -34,7 +34,7 @@ typography:
   close-big:{ fontFamily: "Shrikhand", cqw: 13.5, weight: 400, lineHeight: 0.88, color: "red", rotate: "-5deg" }
   stat-big:{ fontFamily: "Shrikhand", cqw: 22.0, weight: 400, lineHeight: 0.82, color: "red", rotate: "-6deg" }
 
-spacing:
+layout:
   pad-slide: "3cqw 3.6cqw"
   gap-grid: "1.5cqw 2cqw"
 

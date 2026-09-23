@@ -18,7 +18,7 @@ For motion patterns, scene blueprints, transitions, and CSS marker effects, use 
 
 ## Workflow
 
-1. If a project has a design spec, **read it first** and treat its frontmatter tokens as brand truth (colors, fonts, spacing, tone, constraints). Which file to read (precedence `frame.md` → `design.md` → `DESIGN.md`) and how to parse it (frontmatter = normative, prose = context) are defined once in [`references/design-spec.md`](references/design-spec.md) — resolve and load per that doc.
+1. If a project has a design spec, **read it first** and treat its frontmatter tokens as brand truth (colors, fonts, layout/spacing, tone, constraints). Which file to read (precedence `frame.md` → `design.md` → `DESIGN.md`) and how to parse it (frontmatter = normative, prose = context) are defined once in [`references/design-spec.md`](references/design-spec.md) — resolve and load per that doc.
 2. If no design spec exists and the user asks for visual direction, choose a route:
    - Ready-made frame-preset (optional) → `frame-presets/` (adopt a `FRAME.md` as `frame.md`; see `references/design-spec.md`)
    - Named style or mood → `references/visual-styles.md`
@@ -40,7 +40,7 @@ For motion patterns, scene blueprints, transitions, and CSS marker effects, use 
 | Structured expansion for open-ended prompts                                                             | `references/prompt-expansion.md`               |
 | Video-medium density, scale, color, frame composition                                                   | `references/video-composition.md`              |
 | Per-beat direction, rhythm planning, transition timing                                                  | `references/beat-direction.md`                 |
-| Post-authoring spec verification (colors, type, corners, spacing, depth)                                | `references/design-adherence.md`               |
+| Post-authoring spec verification (colors, type, corners, layout/spacing, depth)                         | `references/design-adherence.md`               |
 | High-level motion guardrails and GSAP-quality rules                                                     | `references/motion-principles.md`              |
 | Font selection, pairings, rendered-video type guardrails                                                | `references/typography.md`                     |
 | Story doctrine — hook language, value-before-evidence, storyboard-as-proposal, source-traceable visuals | `references/story-spine.md`                    |

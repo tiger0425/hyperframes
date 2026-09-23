@@ -37,7 +37,7 @@ typography:
   close-title:{ fontFamily: "Inter", cqw: 4.2, weight: 900, lineHeight: 0.95, tracking: "-0.03em", upper: true }
   heading-xl:{ fontFamily: "Inter", cqw: 5.0, weight: 900, lineHeight: 0.95, tracking: "-0.03em", upper: true }
 
-spacing:
+layout:
   slide-pad: "3.1cqw"   # 60px @1920
   gap-md: "1.7cqw"
 

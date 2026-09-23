@@ -8,7 +8,7 @@ The single source of truth for **what a design spec is, how to find it, and how 
 
 A spec is **YAML frontmatter + a markdown body**, and the two layers are not equal:
 
-- **Frontmatter is the normative layer** — `colors`, `typography`, `spacing`, `components` are the real, machine-readable values. Quote them verbatim (exact hex, font family, weight); never invent or round them.
+- **Frontmatter is the normative layer** — `colors`, `typography`, the layout/spacing block, and `components` are the real, machine-readable values. The layout token is named per file: `frame.md` (video-first) writes `layout`; `design.md` / `DESIGN.md` (the DESIGN.md spec) write `spacing`. A `frame.md` that still writes `spacing` is read as `layout`. Quote the values verbatim (exact hex, font family, weight); never invent or round them.
 - **Prose is context** — the `##` sections (Overview, The Frame, Composition Rules, …) carry intent, when-to-use, and constraints the tokens can't hold. Read them for judgment, not for values.
 
 ## Resolving which spec to read
