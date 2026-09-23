@@ -461,6 +461,14 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
 - **根因**：接缝载体是 index 级 wrapper（`class="clip"`），而运行时**自己**管夹层可见性；GSAP 再写 `visibility`/`display`/`autoAlpha` 会与它打架（`autoAlpha` 顺带写 `visibility`）。
 - **修法**：`seam-stamp` 一律用 **`opacity`**（gate 量的也是 opacity）；transform 类属性安全。已落进 `seam-stamp.mjs`。
 
+## §25 `gen-index` 的帧序**必须取旁白清单顺序**，不能 `Object.keys(SLOTS)`（issues/11 落地期）
+
+- **现象**：`ledger.json` 的 seams **顺序与 `cut` 值整体错位**（帧号 `01/07/12/14` 实测得到 `12→14 / 14→01 / 01→07`），`audit-frames` 报 `ledger_seam_row_missing`，`seam-gate verify` 按错的 `cut` 采样。
+- **根因**：JS 对象把**规范整数串键**（`"12"`/`"14"`）排在前、把**带前导零的键**（`"01"`/`"07"`）按插入序排在后面 —— `Object.keys(SLOTS)` 在**帧号混合**（个位 + 十位并存）时给出错序。全 `"01".."09"` 看不出问题；`"01".."12"` 这类（freetoken 旧版、jev 四帧）必然踩。
+- **修法**：帧序以**旁白清单**为准 —— `slots.mjs` 的 `VOICE`（= `.media/voice-manifest.json` 的 `lines` 顺序），`gen-index` 写 `VOICE.map((l) => l.frame)`。**别**用 `Object.keys(SLOTS)` / `Object.entries` 的键序当帧序。
+- **自证**：`seam-gate verify` 全 PASS、`audit-frames` 无 `ledger_seam_row_missing`；`ledger.json` 的 seam `id` 与真实相邻帧号一致（`01→07 → 07→12 → 12→14`）。
+- **说明**：同一坑对任何"按帧号做键"的生成器成立（`beat-at.mjs` / `draft-voice-timeline.mjs` 若按帧号聚合亦然）—— 需要帧序时，一律从清单数组取，不要从对象键取。
+
 ---
 
 ## 快速自检
