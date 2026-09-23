@@ -18,6 +18,13 @@ paper:
   grain-opacity: 0.13
   pin-size: 14
   cutout-shadow-offset: "3px 4px"
+  # 拼贴纸面背景（A 组 + B2，visual-grammar §2.4）：`collage` 主题开、其余主题不开（0 = 关）。
+  # 由 gen-frames 按**帧号当种子**确定性产出；别在帧里手搓背景。
+  paper-layers: 0
+  aging-opacity: 0
+  stain-opacity: 0
+  crease-opacity: 0
+  fiber: 0
 typography:
   display:
     family: "Noto Sans SC"

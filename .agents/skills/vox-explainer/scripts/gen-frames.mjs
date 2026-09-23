@@ -143,6 +143,152 @@ function applyKit(id, theme) {
   return kit;
 }
 
+/* ───────────────────── 拼贴纸面背景（A 组 + B2） ─────────────────────
+ * 来源：`../vox-collage/issues/15` 第四~七轮（A1a 泛黄 / A1b 污渍 / A2 折痕 / A3 各向异性
+ * 纤维 / B2 分层纸面），`gen-frames` 落地 —— 此前在 `issues/19` 记为"已知欠账"。
+ *
+ * 纪律：
+ *   · **确定性**：只用 `hash1(n, seed)` 伪随机，**种子 = 帧号**；禁 `Math.random()`
+ *     （同一时间点 seek 逐像素可复现 = 立场 #1）。
+ *   · **主题驱动**：只有主题在 `layout` 里开了 `paper-layers` / `*-opacity` / `fiber` 才产出。
+ *     `collage` 开；`paper` / `minimal-swiss` / `terminal-dark` 不开 ⇒ 4 部旧片与 paper 主题不受影响。
+ *   · **不占行数预算**：样式进 `<style>`（`countStructuralLines` 会剥掉），标记按组压成极少数行。
+ *   · **有意出血**：分层底纸铺满画幅、部分出框 ⇒ 容器标 `data-layout-allow-overflow`（门禁认的豁免）。
+ */
+function hash1(n, s) {
+  const x = Math.sin(n * 127.1 + (s || 1) * 311.7) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
+}
+
+const COLLAGE_BG_CSS = `
+    /* 拼贴纸面背景（种子 = 帧号）—— B2 分层底纸 / A1a 边缘泛黄 / A1b 污渍 / A2 折痕。
+       整块 .bg 自成层叠上下文（z-index:0），永远在内容之后，不抢读、不动对比度。 */
+    .bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .bg-paper { position: absolute; }
+    .bg-paper-plate { position: absolute; inset: -6px -8px -11px -6px; background: var(--paper-shadow); opacity: 0.55; transform: rotate(0.5deg); }
+    .bg-paper-face { position: absolute; inset: 0; }
+    .bg-edge { position: absolute; }
+    .bg-edge.t { left: 0; right: 0; top: 0; height: 86px; background: linear-gradient(to bottom, var(--paper-shadow), transparent); }
+    .bg-edge.b { left: 0; right: 0; bottom: 0; height: 74px; background: linear-gradient(to top, var(--paper-shadow), transparent); }
+    .bg-edge.l { top: 0; bottom: 0; left: 0; width: 92px; background: linear-gradient(to right, var(--paper-shadow), transparent); }
+    .bg-edge.r { top: 0; bottom: 0; right: 0; width: 70px; background: linear-gradient(to left, var(--paper-shadow), transparent); }
+    .bg-stain { position: absolute; transform: translate(-50%, -50%); background: radial-gradient(circle, var(--aging), transparent 72%); }
+    .bg-crease { position: absolute; }
+    .bg-crease.v { width: 7px; background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--ink) 8%, transparent) 42%, color-mix(in srgb, var(--paper) 30%, transparent) 52%, transparent 100%); }
+    .bg-crease.h { height: 7px; background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--ink) 8%, transparent) 42%, color-mix(in srgb, var(--paper) 30%, transparent) 52%, transparent 100%); }`;
+
+/** 主题是否启用拼贴纸面背景（`collage` 开；其余主题不开 —— 向后兼容，铁律 issues/01）。 */
+function collageBgEnabled(theme) {
+  const L = theme.layout || {};
+  return (
+    Number(L["paper-layers"] || 0) > 0 ||
+    Number(L["aging-opacity"] || 0) > 0 ||
+    Number(L["stain-opacity"] || 0) > 0 ||
+    Number(L["crease-opacity"] || 0) > 0
+  );
+}
+
+/** 纸纹层：各向异性「纤维」（collage）或各向同性「噪点」（默认）。 */
+const GRAIN_ISOTROPIC = `%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E`;
+const GRAIN_FIBER = `%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='420' height='180' filter='url(%23f)'/%3E%3C/svg%3E`;
+
+/** 产出纸面背景标记（空串 = 主题未启用）。种子 = 帧号。 */
+export function collageBackground(nn, theme) {
+  if (!collageBgEnabled(theme)) return "";
+  const L = theme.layout || {};
+  const layers = Number(L["paper-layers"] || 0);
+  const aging = Number(L["aging-opacity"] || 0);
+  const stain = Number(L["stain-opacity"] || 0);
+  const crease = Number(L["crease-opacity"] || 0);
+  const seed = Number(nn) || 1;
+  const groups = [];
+
+  // B2 分层底纸：两张错位叠压（各带错位垫纸、不同纸色）
+  if (layers > 0) {
+    const specs = [
+      { w: 1180, h: 1180, x: -130, y: -72, rot: -1.2, face: "var(--card)" },
+      { w: 980, h: 1160, x: 1190, y: 46, rot: 1, face: "var(--paper-deep)" },
+    ].slice(0, layers);
+    groups.push(
+      specs
+        .map(
+          (s) =>
+            `<div class="bg-paper" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;transform:rotate(${s.rot}deg)"><div class="bg-paper-plate"></div><div class="bg-paper-face" style="background:${s.face}"></div></div>`,
+        )
+        .join(""),
+    );
+  }
+
+  // A1a 边缘泛黄：四条边各一道线性渐变，强弱按帧号播种
+  if (aging > 0) {
+    groups.push(
+      [
+        ["t", 0, 0.055],
+        ["b", 1, 0.042],
+        ["l", 2, 0.048],
+        ["r", 3, 0.034],
+      ]
+        .map(([cls, i0, base]) => {
+          const o = base * (0.7 + Math.abs(hash1(i0 * 3 + 1, seed + 3)) * 0.6);
+          return `<div class="bg-edge ${cls}" style="opacity:${o.toFixed(4)}"></div>`;
+        })
+        .join(""),
+    );
+  }
+
+  // A1b 污渍：数量 3–5 / 位置 / 大小 / 不规则边界全部按帧号播种
+  if (stain > 0) {
+    const n = 3 + Math.round(Math.abs(hash1(1, seed + 11)) * 2);
+    const blobs = [];
+    for (let i = 0; i < n; i += 1) {
+      let x = 8 + Math.abs(hash1(i * 13 + 1, seed)) * 80;
+      let y = 10 + Math.abs(hash1(i * 13 + 2, seed)) * 74;
+      let r = 130 + Math.abs(hash1(i * 13 + 3, seed)) * 170;
+      if (i === 0) {
+        // 至少一处靠近视觉重心（issues/15 第五轮 缺陷 3）
+        x = 34 + Math.abs(hash1(2, seed + 5)) * 34;
+        y = 30 + Math.abs(hash1(3, seed + 5)) * 26;
+        r = 280;
+      }
+      const pts = [];
+      for (let q = 0; q < 14; q += 1) {
+        const a = (q / 14) * Math.PI * 2;
+        const rr = 0.74 + Math.abs(hash1(i * 37 + q, seed + 23)) * 0.34;
+        pts.push(
+          `${(50 + Math.cos(a) * rr * 50).toFixed(1)}% ${(50 + Math.sin(a) * rr * 50).toFixed(1)}%`,
+        );
+      }
+      blobs.push(
+        `<div class="bg-stain" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;width:${r.toFixed(0)}px;height:${(r * 0.72).toFixed(0)}px;opacity:${stain};clip-path:polygon(${pts.join(",")})"></div>`,
+      );
+    }
+    groups.push(blobs.join(""));
+  }
+
+  // A2 折痕：2–4 道、横/纵、不贯穿全幅、带偏斜，全部按帧号播种
+  if (crease > 0) {
+    const n = 2 + Math.round(Math.abs(hash1(1, seed + 7)) * 2);
+    const lines = [];
+    for (let k = 0; k < n; k += 1) {
+      const vert = hash1(k * 7 + 1, seed + 7) > 0;
+      const cross = 6 + Math.abs(hash1(k * 7 + 2, seed + 7)) * 72;
+      const sp = 4 + Math.abs(hash1(k * 7 + 3, seed + 7)) * 40;
+      const ep = Math.min(94, sp + 26 + Math.abs(hash1(k * 7 + 4, seed + 7)) * 44);
+      const rot = (hash1(k * 7 + 5, seed + 7) * 1.2).toFixed(1);
+      const box = vert
+        ? `left:${cross.toFixed(1)}%;top:${sp.toFixed(1)}%;height:${(ep - sp).toFixed(1)}%;transform:rotate(${rot}deg)`
+        : `top:${cross.toFixed(1)}%;left:${sp.toFixed(1)}%;width:${(ep - sp).toFixed(1)}%;transform:rotate(${rot}deg)`;
+      lines.push(
+        `<div class="bg-crease ${vert ? "v" : "h"}" style="${box};opacity:${crease}"></div>`,
+      );
+    }
+    groups.push(lines.join(""));
+  }
+
+  return `      <!-- 拼贴纸面背景（种子 = 帧号 ${seed}）：B2 分层底纸 + A1a 泛黄 + A1b 污渍 + A2 折痕 —— 有意出血，门禁豁免 -->
+      <div class="bg" data-layout-allow-overflow aria-hidden="true">${groups.join("")}</div>`;
+}
+
 /* ───────────────────────── 组装 ───────────────────────── */
 
 /**
@@ -325,6 +471,12 @@ export function buildFrame({
   //    （它承载 track 0 与时长契约）。
   const paperLayer = `      <div id="${id}-paper" class="clip" data-start="0" data-duration="${dur}" data-track-index="0"></div>`;
 
+  // 拼贴纸面背景（A 组 + B2）—— 主题未启用时是空串（paper 等主题零影响）。
+  const bgCss = collageBgEnabled(THEME) ? COLLAGE_BG_CSS : "";
+  const bgMarkup = collageBackground(nn, THEME);
+  // 纸纹：collage 用各向异性纤维（A3）；其余主题保持各向同性噪点。
+  const grainSvg = Number(THEME.layout["fiber"] || 0) > 0 ? GRAIN_FIBER : GRAIN_ISOTROPIC;
+
   const dollyJs = dolly
     ? `      // ── 连续推轨：本帧根。选择器必须是 [data-composition-id="…"] 限定形（pitfalls §3）。
       tl.fromTo('[data-composition-id="${id}"]',
@@ -343,19 +495,21 @@ ${FONTS}
 ${TOKENS}
 ${applyKit(id, THEME)}
 ${autoPosition(css)}
+${bgCss}
   </style>
 
   <div id="root" data-composition-id="${id}" data-width="1920" data-height="1080" data-duration="${dur}">
 ${paperLayer}
 
     <div id="${id}-content" class="clip" data-start="0" data-duration="${dur}" data-track-index="1">
+${bgMarkup}
       <div class="channel-tag">${channelTag}</div>
       <div class="frame-index">${nn} / ${frameCount === null ? Object.keys(SLOTS).length : frameCount}</div>
 ${body}
     </div>
 
     <div id="${id}-grain" class="clip" data-start="0" data-duration="${dur}" data-track-index="2"
-      style="opacity:${THEME.layout["grain-opacity"]};background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"></div>
+      style="opacity:${THEME.layout["grain-opacity"]};background-image:url(&quot;data:image/svg+xml,${grainSvg}&quot;)"></div>
   </div>
 
   <script>
@@ -589,7 +743,15 @@ for (const f of FRAMES) {
   writeFileSync(
     join(OUT, `${f.nn}-${f.slug}.motion.json`),
     JSON.stringify(
-      { scene: id, duration_s: slot, rules: m.rules, exit, entry, notes: m.notes },
+      {
+        scene: id,
+        duration_s: slot,
+        bgSeed: Number(f.nn) || 1,
+        rules: m.rules,
+        exit,
+        entry,
+        notes: m.notes,
+      },
       null,
       2,
     ) + "\n",

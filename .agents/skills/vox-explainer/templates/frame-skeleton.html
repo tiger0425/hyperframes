@@ -189,8 +189,11 @@
     data-duration="{{DURATION}}"
   >
     <!-- 地面层：**纸色底（无网点）** —— C2（`issues/15` 四轮 → 落地 `issues/19`）：
-         真实半调只出现在图像上，白纸没有网点。纸的质感靠下方 grain 层
-         （污渍 / 边缘泛黄 / 折痕 / 各向异性纤维 = `issues/19` 已知欠账）。
+         真实半调只出现在图像上，白纸没有网点。
+         纸的物理质感（污渍 / 边缘泛黄 / 折痕 / 各向异性纤维 / 分层底纸）由 `gen-frames`
+         按主题 `layout` 的 `paper-layers` / `aging-opacity` / `stain-opacity` / `crease-opacity` /
+         `fiber` 键确定性产出（种子 = 帧号；`collage` 主题开、其余不开）——
+         标记注入在 content 层最前，标 `data-layout-allow-overflow`（有意出血）。
          ⚠️ 网点令牌 `halftone-*` 只供**图像与垫纸**用，不要加回这一层。 -->
     <div
       id="{{COMPOSITION_ID}}-paper"
