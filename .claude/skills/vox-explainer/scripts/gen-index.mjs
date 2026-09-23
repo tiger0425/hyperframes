@@ -118,7 +118,10 @@ const seamsOverridePath = join(ROOT, "tools", "seams.json");
 const seamsOverride = existsSync(seamsOverridePath)
   ? JSON.parse(readFileSync(seamsOverridePath, "utf8"))
   : {};
-const NNS = Object.keys(SLOTS);
+// 帧序**必须**取旁白清单的顺序，不能 `Object.keys(SLOTS)` —— JS 把 "10"/"11"/"12"
+// 这类规范整数串键排在前、把 "01"/"07" 这类带前导零的串键按插入序排在后面；帧号混合时
+// （如 01/07/12/14）会得到 ["12","14","01","07"] 的错序 → 接缝账本整体错位（实测）。
+const NNS = VOICE.map((l) => l.frame);
 const seams = [];
 for (let i = 0; i < NNS.length - 1; i += 1) {
   const a = NNS[i];
