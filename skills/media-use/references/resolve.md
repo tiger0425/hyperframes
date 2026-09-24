@@ -73,6 +73,7 @@ node <SKILL_DIR>/scripts/resolve.mjs --type lut --intent "teal orange blockbuste
 | `--width/--height` | Generation size in px (snapped to a multiple of 32)                              |
 | `--steps`       | Sampling steps (`comfyui`: default 30; the official pipeline uses 40-50)             |
 | `--seed`        | Pin the seed for a reproducible generation                                           |
+| `--model-sha256` | Optional 64-character model file SHA-256 recorded with ComfyUI provenance           |
 | `--adopt`       | Bulk-import existing assets/ into manifest                                           |
 | `--doctor`      | Check local CLI dependencies; no manifest changes                                    |
 | `--stats`       | Print local usage stats from `.media/` and `~/.media`; no manifest changes           |
@@ -89,6 +90,10 @@ local image generator, then the `codex` upsell. Generation flags:
 node <SKILL_DIR>/scripts/resolve.mjs --type image --provider comfyui \
   --transparent --width 1024 --height 1024 --intent "a rally car on its own"
 # → resolved image_003 → .media/images/image_003.png (image, generated)
+
+# Pin the local model file hash and capture the exact API graph in provenance
+node <SKILL_DIR>/scripts/resolve.mjs --type image --provider comfyui \
+  --model-sha256 <64-hex-sha256> --seed 20260923 --intent "a paper collage rally car"
 ```
 
 `--process` flips the verb from *find* to *operate on*: instead of resolving a
@@ -119,6 +124,13 @@ promotion — so an edited image is reusable across projects like any other.
 instead of a fresh blank one, so the edit inherits the reference's framing — the
 same behaviour the automatic default above already aims for, but at the graph
 level rather than by copying width/height.
+
+ComfyUI results also carry the reproducibility inputs in `provenance`: the
+selected `model_file`, the optional normalized `model_sha256` passed by
+`--model-sha256`, the pinned `seed`, and the exact API graph under
+`provenance.workflow` (`workflow_format: "comfyui-api"`). The vox bridge writes
+that graph to `.media/gen/<role>-<nn>.workflow.json` and records the relative
+path in its M5 ledger row.
 
 ### Size gate: references + target share one budget
 

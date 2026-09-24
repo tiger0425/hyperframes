@@ -1,0 +1,365 @@
+<template>
+  <style>
+    /* hf-scene-visibility-leak-guard — 集成块，原样保留，别删（pitfalls §5） */
+    [data-composition-id="frame-01-hook"][style*="visibility: hidden"] * ,
+    [data-composition-id="frame-01-hook"][style*="visibility: hidden"] {
+      visibility: hidden !important;
+    }
+
+    /* 规范字体块：全项目只有这一套，指向 assets/fonts/ 的真实文件。 */
+    @font-face {
+      font-family: "Noto Sans SC";
+      src: url("assets/fonts/NotoSansSC-VF.ttf") format("truetype-variations");
+      font-weight: 100 900; font-style: normal; font-display: block;
+    }
+    @font-face {
+      font-family: "JetBrains Mono";
+      src: url("assets/fonts/JetBrainsMono-400.woff2") format("woff2");
+      font-weight: 400; font-style: normal; font-display: block;
+    }
+    @font-face {
+      font-family: "JetBrains Mono";
+      src: url("assets/fonts/JetBrainsMono-700.woff2") format("woff2");
+      font-weight: 700; font-style: normal; font-display: block;
+    }
+    @font-face {
+      font-family: "Caveat";
+      src: url("assets/fonts/Caveat-700-latin.woff2") format("woff2");
+      font-weight: 700; font-style: normal; font-display: block;
+    }
+    @font-face {
+      font-family: "Microsoft YaHei";
+      src: local("Microsoft YaHei"), local("MicrosoftYaHei");
+      font-weight: 100 900; font-style: normal; font-display: block;
+    }
+
+    html, body {
+      margin: 0; padding: 0; width: 1920px; height: 1080px;
+      overflow: hidden; background: #ede6d6;
+    }
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      --paper: #ede6d6;
+      --paper-deep: #dcd3be;
+      --paper-shadow: #c9bfa6;
+      --card: #f4eedc;
+      --ink: #141310;
+      --ink-soft: #57503f;
+      --rule: #bdb39c;
+      --halftone: #141310;
+      --tape: #d9cdae;
+      --stamp: #8c2f24;
+      --string: #b4342a;
+      --pin: #b08a3e;
+      --cutout-shadow: #8a806a;
+      --signal: #d6271c;
+      --marker: #d9a521;
+      --aging: #8b6a34;
+      --margin: 96px;
+      --gutter: 32px;
+    }
+
+    [data-composition-id="frame-01-hook"] {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+    /* 禁止项：不用渐变、阴影、圆角、玻璃拟态、emoji、纯白帧底 */
+    [data-composition-id="frame-01-hook"] * { box-sizing: border-box; border-radius: 0; }
+
+    .channel-tag, .frame-index {
+      position: absolute; top: var(--margin);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-weight: 500; font-size: 22px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--ink-soft);
+    }
+    .channel-tag { left: var(--margin); }
+    .frame-index { right: var(--margin); font-variant-numeric: tabular-nums; }
+
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .hl { position: absolute; left: var(--margin); font-weight: 900; letter-spacing: -0.02em; line-height: 1.08; }
+    .note { font-family: "Caveat", "Noto Sans SC", cursive; font-weight: 700; color: var(--signal); }
+
+    .card { position: absolute; background: var(--paper-deep); border: 3px solid var(--ink); }
+    .chip {
+      position: absolute; border: 3px solid var(--ink); background: var(--paper);
+      font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;
+      display: flex; align-items: center; justify-content: center; text-align: center;
+    }
+    .kwd { font-family: "JetBrains Mono", ui-monospace, monospace; background: var(--marker); padding: 0 8px; }
+    .kw  { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    .soft { color: var(--ink-soft); }
+    .sig { color: var(--signal); }
+    .rule-b { border-bottom: 1px solid var(--rule); }
+    .rule-t { border-top: 3px solid var(--ink); }
+    .plate { position: absolute; background: var(--ink); color: var(--paper); }
+    .badge {
+      position: absolute; border: 2px solid var(--signal); color: var(--signal);
+      font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 10px;
+    }
+
+    /* 材料：错位垫纸做"纸做的阴影"（零 box-shadow），手绘 SVG 覆盖层与 img 同盒 */
+    .mat { position: absolute; isolation: isolate; }
+    .mat-paper {
+      position: absolute; inset: -14px -14px -18px -14px; z-index: 0;
+      background: var(--paper-shadow); transform: rotate(0.7deg);
+    }
+    .mat img { display: block; width: 100%; height: auto; position: relative; z-index: 1; }
+    .mat svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+    .mat-frame { position: absolute; inset: 0; border: 3px solid var(--ink); z-index: 3; pointer-events: none; }
+    .sc { fill: none; stroke: var(--signal); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+    .sc-thin { fill: none; stroke: var(--signal); stroke-width: 3; stroke-linecap: round; }
+    .sc-light { fill: none; stroke: var(--paper); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* 入场隐藏：**visibility，不是 opacity**（pitfalls §5）。动画的位移/淡入交给 opacity。*/
+    #root .js-hide { visibility: hidden; }
+
+    #f01-focus { position: absolute; left: 160px; top: 170px; width: 1400px; height: 700px; font-size: 18px; }
+    #f01-card { position: absolute; inset: 0; background: var(--paper-deep); border: 3px solid var(--ink); }
+    #f01-kicker { position: absolute; left: 60px; top: 44px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 26px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+    #f01-line1 { position: absolute; left: 56px; top: 128px; width: 1300px; font-weight: 900; font-size: 118px; line-height: 1.04; letter-spacing: -0.02em; color: var(--ink); }
+    #f01-cut { position: absolute; left: 56px; top: 300px; background: var(--signal); color: var(--paper); font-weight: 900; font-size: 84px; letter-spacing: -0.01em; padding: 8px 22px; }
+    #f01-note { position: absolute; left: 60px; top: 500px; font-family: "Caveat", "Noto Sans SC", cursive; font-weight: 700; color: var(--signal); font-size: 46px; }
+    #f01-foot { position: absolute; left: 60px; bottom: 40px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 22px; letter-spacing: 0.12em; color: var(--ink-soft); }
+    #f01-stamp { position: absolute; right: 110px; bottom: 110px; width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; border: 6px solid var(--signal); color: var(--signal); font-weight: 900; font-size: 52px; transform: rotate(-12deg); }
+  
+
+    /* 拼贴纸面背景（种子 = 帧号）—— B2 分层底纸 / A1a 边缘泛黄 / A1b 污渍 / A2 折痕。
+       整块 .bg 自成层叠上下文（z-index:0），永远在内容之后，不抢读、不动对比度。 */
+    .bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .bg-paper { position: absolute; }
+    .bg-paper-plate { position: absolute; inset: -6px -8px -11px -6px; background: var(--paper-shadow); opacity: 0.55; transform: rotate(0.5deg); }
+    .bg-paper-face { position: absolute; inset: 0; }
+    .bg-edge { position: absolute; }
+    .bg-edge.t { left: 0; right: 0; top: 0; height: 86px; background: linear-gradient(to bottom, var(--paper-shadow), transparent); }
+    .bg-edge.b { left: 0; right: 0; bottom: 0; height: 74px; background: linear-gradient(to top, var(--paper-shadow), transparent); }
+    .bg-edge.l { top: 0; bottom: 0; left: 0; width: 92px; background: linear-gradient(to right, var(--paper-shadow), transparent); }
+    .bg-edge.r { top: 0; bottom: 0; right: 0; width: 70px; background: linear-gradient(to left, var(--paper-shadow), transparent); }
+    .bg-stain { position: absolute; transform: translate(-50%, -50%); background: radial-gradient(circle, var(--aging), transparent 72%); }
+    .bg-crease { position: absolute; }
+    .bg-crease.v { width: 7px; background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--ink) 8%, transparent) 42%, color-mix(in srgb, var(--paper) 30%, transparent) 52%, transparent 100%); }
+    .bg-crease.h { height: 7px; background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--ink) 8%, transparent) 42%, color-mix(in srgb, var(--paper) 30%, transparent) 52%, transparent 100%); }
+  </style>
+
+  <div id="root" data-composition-id="frame-01-hook" data-width="1920" data-height="1080" data-duration="11.7">
+      <div id="frame-01-hook-paper" class="clip" data-start="0" data-duration="11.7" data-track-index="0"></div>
+
+    <div id="frame-01-hook-content" class="clip" data-start="0" data-duration="11.7" data-track-index="1">
+      <!-- 拼贴纸面背景（种子 = 帧号 1）：B2 分层底纸 + A1a 泛黄 + A1b 污渍 + A2 折痕 —— 有意出血，门禁豁免 -->
+      <div class="bg" data-layout-allow-overflow aria-hidden="true"><div class="bg-paper" style="left:-130px;top:-72px;width:1180px;height:1180px;transform:rotate(-1.2deg)"><div class="bg-paper-plate"></div><div class="bg-paper-face" style="background:var(--card)"></div></div><div class="bg-paper" style="left:1190px;top:46px;width:980px;height:1160px;transform:rotate(1deg)"><div class="bg-paper-plate"></div><div class="bg-paper-face" style="background:var(--paper-deep)"></div></div><div class="bg-edge t" style="opacity:0.0419"></div><div class="bg-edge b" style="opacity:0.0372"></div><div class="bg-edge l" style="opacity:0.0586"></div><div class="bg-edge r" style="opacity:0.0296"></div><div class="bg-stain" style="left:37.6%;top:45.7%;width:280px;height:202px;opacity:0.22;clip-path:polygon(101.5% 50.0%,98.3% 73.3%,73.2% 79.1%,61.3% 99.6%,41.6% 86.8%,18.0% 90.1%,7.5% 70.5%,8.9% 50.0%,13.8% 32.6%,21.1% 13.8%,41.0% 10.6%,58.8% 11.4%,77.1% 16.0%,96.4% 27.6%)"></div><div class="bg-stain" style="left:68.7%;top:58.9%;width:241px;height:174px;opacity:0.22;clip-path:polygon(102.7% 50.0%,89.1% 68.8%,79.3% 86.7%,58.6% 87.5%,38.1% 102.3%,18.0% 90.1%,11.0% 68.8%,0.7% 50.0%,10.5% 31.0%,23.2% 16.4%,38.0% -2.6%,61.3% 0.6%,74.1% 19.7%,83.9% 33.7%)"></div><div class="bg-stain" style="left:9.6%;top:76.0%;width:281px;height:202px;opacity:0.22;clip-path:polygon(103.1% 50.0%,98.6% 73.4%,77.0% 83.9%,60.1% 94.4%,39.3% 97.0%,18.1% 90.0%,14.5% 67.1%,-1.4% 50.0%,5.2% 28.4%,20.8% 13.4%,39.1% 2.1%,60.7% 3.2%,83.6% 7.9%,89.3% 31.1%)"></div><div class="bg-crease v" style="left:12.2%;top:32.3%;height:36.2%;transform:rotate(0.8deg);opacity:0.07"></div><div class="bg-crease v" style="left:30.0%;top:26.0%;height:36.6%;transform:rotate(0.8deg);opacity:0.07"></div><div class="bg-crease v" style="left:55.9%;top:26.8%;height:26.5%;transform:rotate(0.4deg);opacity:0.07"></div></div>
+      <div class="channel-tag">VOX · SMOKE</div>
+      <div class="frame-index">01 / 4</div>
+      <div id="f01-focus" data-focus style="width:1400px;height:700px">
+        <div id="f01-card">
+          <div id="f01-kicker">新模型</div>
+          <div id="f01-line1">它不生成正文</div>
+          <div id="f01-cut">它先想，再写</div>
+          <div id="f01-note">别拿它当聊天框</div>
+          <div id="f01-foot">叙事拍 · 钩子</div>
+        </div>
+      </div>
+      <div id="f01-stamp" class="js-hide">钩子</div>
+    </div>
+
+    <div id="frame-01-hook-grain" class="clip" data-start="0" data-duration="11.7" data-track-index="2"
+      style="opacity:0.13;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='420' height='180' filter='url(%23f)'/%3E%3C/svg%3E&quot;)"></div>
+  </div>
+
+  <script>
+    (function () {
+      const tl = gsap.timeline();
+      const SLOT = 11.7;
+      // 动效契约常量（issues/22）—— 由生成器注入，作者不 import。
+      const MC = {"FPS_QUANT":12,"SETTLE_FRAMES":2,"BOUNCE_PEAK":1.06,"LAYERS":{"ground":{"from":{},"dur":0.4},"fact":{"from":{"x":-42,"y":-18},"dur":0.5},"trim":{"from":{"y":-26,"rotation":-3},"dur":0.4}},"QUANTIZE_PROPS":["x","y","rotation","scale"],"HOLD_MAX_PX":2,"HALFTONE_SWING":0.03,"FOCUS_TRIGGER":{"fontSizePxLt":24,"cueMentionsGte":2,"onScreenSecGte":3},"FOCUS_MODE":["push","window"],"FOCUS_TIMING":{"in":0.8,"hold":2,"out":0.6},"CLOSER":["stamp","taut-string","pull-mat"]};
+      const NARRATION_LEAD = 0.3;
+      const DEFAULT_LEAD = 0.2;
+      // 线索时间来自 tools/cue-times.json（faster-whisper 词级对齐真值），构建时注入。
+      const CUE = {"line1":0.4,"kicker":1,"cut":3.2,"note":5.6,"foot":7.8,"close":8.8};
+      // at(k) = 帧内秒点（issues/11 Q1）：wav 相对秒 + 旁白入点 − 提前量。
+      const at = (k, lead = DEFAULT_LEAD) =>
+        Math.max(0, (CUE[k] === undefined ? 0 : CUE[k]) + NARRATION_LEAD - lead);
+
+      // ── 旧 7 助手（rise/slide/drop/stamp/fade/draw/show）**deprecated**（issues/22 §5）：
+      //    保留仅为 4 部已交付项目可复现。新帧请用 assemble() / reveal() / focus() / closer()。
+
+      // 手绘逐笔画出：getTotalLength() 的 dash。必须在 seek(0) 之前注册。
+      // 路径带 .js-hide（CSS visibility:hidden），这里用 tl.set 在 t 处揭示 —— 不能提前可见。
+      function ink(sel, t, dur = 0.7) {
+        document.querySelectorAll("#root " + sel).forEach(function (p) {
+          const len = p.getTotalLength();
+          gsap.set(p, { strokeDasharray: len + " " + len * 1.06, strokeDashoffset: len });
+          tl.set(p, { visibility: "visible" }, t);
+          tl.to(p, { strokeDashoffset: 0, duration: dur, ease: "power2.out" }, t);
+        });
+      }
+
+      // 入场四式：全部是 fromTo（自建基线，不依赖 .js-hide 的揭示约定），
+      // 元素在 t 之前保持 CSS 的 visibility:hidden —— 这就是"与旁白同步"的机制。
+      function rise(sel, t, dy, dur) {
+        tl.fromTo(sel, { opacity: 0, y: dy || 34 }, { opacity: 1, y: 0, duration: dur || 0.5, ease: "power3.out" }, t);
+      }
+      function slide(sel, t, dx, dur) {
+        tl.fromTo(sel, { opacity: 0, x: dx || 60 }, { opacity: 1, x: 0, duration: dur || 0.55, ease: "power4.out" }, t);
+      }
+      function drop(sel, t, dy) {
+        tl.fromTo(sel, { opacity: 0, y: dy === undefined ? -46 : dy, scale: 1.05 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power4.out" }, t);
+      }
+      function stamp(sel, t, dur) {
+        tl.fromTo(sel, { opacity: 0, scale: 0.62 }, { opacity: 1, scale: 1, duration: dur || 0.48, ease: "back.out(2.4)" }, t);
+      }
+      function fade(sel, t, dur) {
+        tl.fromTo(sel, { opacity: 0 }, { opacity: 1, duration: dur || 0.45, ease: "power2.out" }, t);
+      }
+      function draw(sel, t, dur) {
+        gsap.set(sel, { transformOrigin: "0% 50%" });
+        tl.fromTo(sel, { scaleX: 0 }, { scaleX: 1, duration: dur || 0.5, ease: "power2.out" }, t);
+      }
+      // 只做位移、不做透明度：用于"深底上的文字"，避免对比度审计在淡入中途采样到低对比。
+      function show(sel, t, dy) {
+        tl.set(sel, { visibility: "visible" }, t);
+        tl.fromTo(sel, { y: dy === undefined ? 20 : dy }, { y: 0, duration: 0.45, ease: "power3.out" }, t);
+      }
+
+      // ── 动效契约 v2（issues/10 · 11 · 22）──────────────────────────────
+      // 单一 onUpdate 分发器：一个 timeline 只有一个 onUpdate。若帧内已装 hw-boil，复用它。
+      function hfOnUpdate(fn) {
+        if (typeof window.hwOnUpdate === "function") { window.hwOnUpdate(tl, fn); return; }
+        if (!tl.__hfRenders) {
+          tl.__hfRenders = [];
+          tl.eventCallback("onUpdate", function () {
+            for (var i = 0; i < tl.__hfRenders.length; i += 1) tl.__hfRenders[i]();
+          });
+        }
+        tl.__hfRenders.push(fn);
+        fn();
+      }
+      // 只对 from/to 出现过的属性做数值插值；opacity 不参与停格。
+      function hfLerp(els, from, to, p) {
+        var keys = Object.keys(from).concat(Object.keys(to));
+        for (var i = 0; i < keys.length; i += 1) {
+          var k = keys[i];
+          if (k === "opacity") continue;
+          var d = k === "scale" ? 1 : 0;
+          var a = from[k] === undefined ? d : from[k];
+          var b = to[k] === undefined ? d : to[k];
+          var o = {};
+          o[k] = a + (b - a) * p;
+          gsap.set(els, o);
+        }
+      }
+      // assemble：停格装配（12fps 量化，只作用 QUANTIZE_PROPS），落定 = SETTLE_FRAMES 保持 + BOUNCE_PEAK 回弹。
+      // 落定后 x/y/rotation/scale 永不再动 —— 别再对同一元素动这四个属性。
+      function assemble(sel, t, opts) {
+        opts = opts || {};
+        var L = MC.LAYERS[opts.layer || "fact"] || MC.LAYERS.fact;
+        var from = Object.assign({}, L.from, opts.from || {});
+        var to = opts.to || {};
+        var dur = opts.dur === undefined ? L.dur : opts.dur;
+        var els = gsap.utils.toArray(sel);
+        gsap.set(els, from);
+        tl.set(els, { visibility: "visible" }, t);
+        hfOnUpdate(function () {
+          var now = tl.time();
+          if (now < t) { hfLerp(els, from, to, 0); return; }
+          var end = t + dur;
+          if (now < end) {
+            var q = Math.floor((now - t) * MC.FPS_QUANT + 1e-6) / MC.FPS_QUANT;
+            hfLerp(els, from, to, Math.min(1, q / dur));
+            return;
+          }
+          hfLerp(els, from, to, 1);
+          var b1 = end + MC.SETTLE_FRAMES / MC.FPS_QUANT;
+          if (now < b1) {
+            var bp = (now - end) / (b1 - end);
+            gsap.set(els, {
+              scale: (to.scale === undefined ? 1 : to.scale) * (1 + (MC.BOUNCE_PEAK - 1) * (1 - bp)),
+            });
+          }
+        });
+      }
+      // reveal：平滑揭示，逐条跟旁白。**内部强制打开 visibility**（issues/15 第一坑：只动 opacity 会永远不可见）。
+      function reveal(sel, t, opts) {
+        opts = opts || {};
+        var from = Object.assign({ opacity: 0, y: 18 }, opts.from || {});
+        var to = Object.assign({ opacity: 1, y: 0 }, opts.to || {});
+        var dur = opts.dur === undefined ? 0.5 : opts.dur;
+        var els = gsap.utils.toArray(sel);
+        tl.set(els, { visibility: "visible" }, t);
+        tl.fromTo(els, from, Object.assign({}, to, { duration: dur, ease: opts.ease || "power3.out" }), t);
+      }
+      // focus：信息聚焦，只作用容器，必须回位（out>0 由函数保证）。与停格分层：停格动元素，聚焦动容器。
+      function focus(sel, t, opts) {
+        opts = opts || {};
+        var to = opts.to === undefined ? 1.16 : opts.to;
+        var tin = opts.in === undefined ? MC.FOCUS_TIMING.in : opts.in;
+        var hold = opts.hold === undefined ? MC.FOCUS_TIMING.hold : opts.hold;
+        var tout = opts.out === undefined ? MC.FOCUS_TIMING.out : opts.out;
+        if (!(tout > 0)) tout = MC.FOCUS_TIMING.out;
+        var els = gsap.utils.toArray(sel);
+        tl.fromTo(els, { scale: 1 }, { scale: to, duration: tin, ease: "power2.inOut" }, t);
+        tl.to(els, { scale: 1, duration: tout, ease: "power2.inOut" }, t + tin + hold);
+      }
+      // closer：幕末收尾动作（stamp | taut-string | pull-mat）。pull-mat 同时就是接缝载体（issues/20）。
+      function closer(sel, t, opts) {
+        opts = opts || {};
+        var g = opts.gesture || "stamp";
+        var els = gsap.utils.toArray(sel);
+        tl.set(els, { visibility: "visible" }, t);
+        if (g === "stamp") {
+          tl.fromTo(els, { opacity: 0, scale: 0.9, rotation: -4 },
+            { opacity: 1, scale: 1, rotation: 0, duration: 0.32, ease: "power4.out" }, t);
+        } else if (g === "taut-string") {
+          tl.fromTo(els, { scaleX: 0.2 }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, t);
+        } else {
+          tl.to(els, { x: -120, rotation: -6, duration: 0.5, ease: "power2.in" }, t);
+        }
+      }
+
+      // ── 连续推轨：本帧根。选择器必须是 [data-composition-id="…"] 限定形（pitfalls §3）。
+      tl.fromTo('[data-composition-id="frame-01-hook"]',
+        { scale: 1, x: 0, y: 0 },
+        { scale: 1.05, x: -16, y: -10, duration: SLOT - 0.8, ease: "none" }, 0.2);
+      assemble("#f01-line1", at("line1"), {});
+      assemble("#f01-cut", at("cut"), {});
+      assemble("#f01-note", at("note"), {});
+      assemble("#f01-foot", at("foot"), {});
+      reveal("#f01-kicker", at("kicker"), { from: { opacity: 0, y: 0 } });
+      closer("#f01-stamp", at("close"), { gesture: "stamp" });
+      tl.seek(0);
+
+      /* hf-js-hide-reveal-pass — 集成块，原样保留（pitfalls §4）。
+         为每个 .js-hide 元素在其自身动画首次触及的时刻注册零时长揭示；
+         从未被任何 tween 触及的元素在 0 处揭示（宁可早出现，也不能静默丢弃内容）。
+         揭示的属性必须与 CSS 的隐藏属性配对：CSS 用 visibility: hidden，这里写 visibility: "visible"。 */
+      (function () {
+        var scoped = document.querySelectorAll("#root .js-hide");
+        if (!scoped.length) return;
+        var firstTouch = new Map();
+        tl.getChildren(false, true, true).forEach(function (child) {
+          var targets = typeof child.targets === "function" ? child.targets() : [];
+          for (var i = 0; i < targets.length; i += 1) {
+            var node = targets[i];
+            if (!node || node.nodeType !== 1 || !node.classList || !node.classList.contains("js-hide")) continue;
+            var start = child.startTime();
+            var known = firstTouch.get(node);
+            if (known === undefined || start < known) firstTouch.set(node, start);
+          }
+        });
+        for (var j = 0; j < scoped.length; j += 1) {
+          var el = scoped[j];
+          var at = firstTouch.get(el);
+          tl.set(el, { visibility: "visible" }, at === undefined ? 0 : at);
+        }
+      })();
+      /* end hf-js-hide-reveal-pass */
+
+      window.__timelines["frame-01-hook"] = tl;
+    })();
+  </script>
+</template>

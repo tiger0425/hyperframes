@@ -1,0 +1,18 @@
+{
+  "scene": "frame-04-close",
+  "duration_s": 13.3,
+  "bgSeed": 4,
+  "rules": [
+    "depth-scatter-assemble",
+    "spring-pop-entrance"
+  ],
+  "exit": {
+    "vector": "right (右下角红勾收笔，载体仍在动 —— 幕末落在 closer 动作中)",
+    "still_moving": true
+  },
+  "entry": {
+    "vector": "right (三枚协议芯片依次弹入；中途入场)",
+    "from_rest": false
+  },
+  "notes": "材料用的是 cli.md 的 Image input 段落裁切（2490×430），viewBox = 该文件自身像素空间，手绘坐标按图内像素写。"
+}

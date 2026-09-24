@@ -1,0 +1,8 @@
+{"path":".media/audio/asmr/asmr-card-knock-01.wav","tier":"M5","origin":"ffmpeg lavfi synth (tools/gen-asmr.mjs)","license":"self","kind":"asmr","type":"audio"}
+{"path":".media/audio/asmr/asmr-pin-tick-01.wav","tier":"M5","origin":"ffmpeg lavfi synth (tools/gen-asmr.mjs)","license":"self","kind":"asmr","type":"audio"}
+{"path":".media/audio/asmr/asmr-stamp-thump-01.wav","tier":"M5","origin":"ffmpeg lavfi synth (tools/gen-asmr.mjs)","license":"self","kind":"asmr","type":"audio"}
+{"path":".media/audio/asmr/asmr-paper-slide-01.wav","tier":"M5","origin":"ffmpeg lavfi synth (tools/gen-asmr.mjs)","license":"self","kind":"asmr","type":"audio"}
+{"path":".media/audio/voice/voice_001.wav","tier":"M1","origin":"deterministic silence fixture (8 kHz mono PCM)","license":"fixture","kind":"voice","type":"audio"}
+{"path":".media/audio/voice/voice_002.wav","tier":"M1","origin":"deterministic silence fixture (8 kHz mono PCM)","license":"fixture","kind":"voice","type":"audio"}
+{"path":".media/audio/voice/voice_003.wav","tier":"M1","origin":"deterministic silence fixture (8 kHz mono PCM)","license":"fixture","kind":"voice","type":"audio"}
+{"path":".media/audio/voice/voice_004.wav","tier":"M1","origin":"deterministic silence fixture (8 kHz mono PCM)","license":"fixture","kind":"voice","type":"audio"}

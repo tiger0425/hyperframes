@@ -152,6 +152,113 @@ function test(name, fn) {
 
 // --- manifest cache hit ---
 
+test("rejects a malformed model SHA-256 before provider dispatch", () => {
+  setup();
+  const result = spawnResolve([
+    "--type",
+    "image",
+    "--provider",
+    "comfyui",
+    "--intent",
+    "a test image",
+    "--project",
+    tmp,
+    "--model-sha256",
+    "not-a-hash",
+    "--json",
+  ]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--model-sha256 must be a 64-character hexadecimal SHA-256/);
+  cleanup();
+});
+
+test("ComfyUI resolve records the model hash and API workflow graph", async () => {
+  setup();
+  let promptBody = "";
+  const server = createServer((req, res) => {
+    if (req.url === "/system_stats") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ system: { comfyui_version: "0.37.0" } }));
+      return;
+    }
+    if (req.url === "/prompt") {
+      req.setEncoding("utf8");
+      req.on("data", (chunk) => {
+        promptBody += chunk;
+      });
+      req.on("end", () => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ prompt_id: "pid-1", number: 0, node_errors: {} }));
+      });
+      return;
+    }
+    if (req.url === "/history/pid-1") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          "pid-1": {
+            status: { status_str: "success", completed: true },
+            outputs: { save: { images: [{ filename: "out.png", subfolder: "", type: "output" }] } },
+          },
+        }),
+      );
+      return;
+    }
+    if (req.url?.startsWith("/view?")) {
+      res.writeHead(200, { "Content-Type": "image/png" });
+      res.end(Buffer.from("fake-png"));
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  const hash = "A".repeat(64);
+  try {
+    const result = await spawnResolveAsync(
+      [
+        "--type",
+        "image",
+        "--provider",
+        "comfyui",
+        "--intent",
+        "a paper collage image",
+        "--project",
+        tmp,
+        "--model-sha256",
+        hash,
+        "--seed",
+        "123",
+        "--width",
+        "1000",
+        "--height",
+        "1000",
+        "--raw-alpha",
+        "--json",
+      ],
+      {
+        env: { HOME: tmp, PATH: tmp, COMFYUI_URL: `http://127.0.0.1:${port}`, COMFYUI_LAUNCH: "" },
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.provenance.model_sha256, "a".repeat(64));
+    assert.equal(parsed.provenance.workflow_format, "comfyui-api");
+    assert.equal(parsed.provenance.workflow.sampler.inputs.seed, 123);
+    assert.equal(parsed.provenance.workflow.latent.inputs.width, 992);
+    assert.equal(parsed.provenance.workflow.latent.inputs.height, 992);
+    assert.equal(parsed.provenance.width, 992);
+    const manifest = readManifest(tmp);
+    assert.equal(manifest[0].provenance.model_sha256, "a".repeat(64));
+    assert.equal(manifest[0].provenance.workflow.sampler.inputs.seed, 123);
+    assert.ok(promptBody.includes('"sampler"'));
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    cleanup();
+  }
+});
+
 test("bundled SFX resolve without HeyGen on PATH", () => {
   setup();
   const result = spawnResolve(["--type", "sfx", "--intent", "whoosh", "--project", tmp, "--json"], {

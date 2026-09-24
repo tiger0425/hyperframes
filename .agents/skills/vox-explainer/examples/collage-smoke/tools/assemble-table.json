@@ -1,0 +1,162 @@
+{
+  "fps": 30,
+  "frames": {
+    "01-hook": {
+      "slot": 11.7,
+      "closerAt": 8.9,
+      "entries": [
+        {
+          "sel": "#f01-line1",
+          "tier": "fact",
+          "cueKey": "line1",
+          "cueAt": 0.5,
+          "settleAt": 1.167
+        },
+        {
+          "sel": "#f01-cut",
+          "tier": "fact",
+          "cueKey": "cut",
+          "cueAt": 3.3,
+          "settleAt": 3.967
+        },
+        {
+          "sel": "#f01-note",
+          "tier": "fact",
+          "cueKey": "note",
+          "cueAt": 5.7,
+          "settleAt": 6.367
+        },
+        {
+          "sel": "#f01-foot",
+          "tier": "fact",
+          "cueKey": "foot",
+          "cueAt": 7.9,
+          "settleAt": 8.567
+        }
+      ]
+    },
+    "02-mech": {
+      "slot": 14.7,
+      "closerAt": 11.7,
+      "entries": [
+        {
+          "sel": "#f02-t",
+          "tier": "fact",
+          "cueKey": "t",
+          "cueAt": 0.5,
+          "settleAt": 1.167
+        },
+        {
+          "sel": "#f02-c1",
+          "tier": "fact",
+          "cueKey": "c1",
+          "cueAt": 2.9,
+          "settleAt": 3.567
+        },
+        {
+          "sel": "#f02-c2",
+          "tier": "fact",
+          "cueKey": "c2",
+          "cueAt": 5.3,
+          "settleAt": 5.967
+        },
+        {
+          "sel": "#f02-c3",
+          "tier": "fact",
+          "cueKey": "c3",
+          "cueAt": 7.7,
+          "settleAt": 8.367
+        },
+        {
+          "sel": "#f02-foot",
+          "tier": "fact",
+          "cueKey": "foot",
+          "cueAt": 9.5,
+          "settleAt": 10.167
+        }
+      ]
+    },
+    "03-data": {
+      "slot": 14.7,
+      "closerAt": 11.7,
+      "entries": [
+        {
+          "sel": "#f03-t",
+          "tier": "fact",
+          "cueKey": "t",
+          "cueAt": 0.5,
+          "settleAt": 1.167
+        },
+        {
+          "sel": "#f03-row1",
+          "tier": "fact",
+          "cueKey": "b1",
+          "cueAt": 2.9,
+          "settleAt": 3.567
+        },
+        {
+          "sel": "#f03-row2",
+          "tier": "fact",
+          "cueKey": "b2",
+          "cueAt": 5.3,
+          "settleAt": 5.967
+        },
+        {
+          "sel": "#f03-key",
+          "tier": "fact",
+          "cueKey": "key",
+          "cueAt": 7.7,
+          "settleAt": 8.367
+        },
+        {
+          "sel": "#f03-foot",
+          "tier": "fact",
+          "cueKey": "foot",
+          "cueAt": 9.5,
+          "settleAt": 10.167
+        }
+      ]
+    },
+    "04-close": {
+      "slot": 13.3,
+      "closerAt": 9.5,
+      "entries": [
+        {
+          "sel": "#f04-t",
+          "tier": "fact",
+          "cueKey": "t",
+          "cueAt": 0.5,
+          "settleAt": 1.167
+        },
+        {
+          "sel": "#f04-l1",
+          "tier": "fact",
+          "cueKey": "l1",
+          "cueAt": 2.7,
+          "settleAt": 3.367
+        },
+        {
+          "sel": "#f04-l2",
+          "tier": "fact",
+          "cueKey": "l2",
+          "cueAt": 5.1,
+          "settleAt": 5.767
+        },
+        {
+          "sel": "#f04-note",
+          "tier": "fact",
+          "cueKey": "note",
+          "cueAt": 7.3,
+          "settleAt": 7.967
+        },
+        {
+          "sel": "#f04-foot",
+          "tier": "fact",
+          "cueKey": "foot",
+          "cueAt": 8.5,
+          "settleAt": 9.167
+        }
+      ]
+    }
+  }
+}

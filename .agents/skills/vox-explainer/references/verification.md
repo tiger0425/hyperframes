@@ -28,6 +28,8 @@ node <skill>/scripts/hf.mjs lint --json      # 期望 ok=true，0 error / 0 warn
 node <skill>/scripts/hf.mjs check --json --out .hyperframes/check-latest.json
 ```
 
+先确认项目根的 `assets/vendor/gsap.min.js` 存在，并且 `index.html` 只从该路径加载 GSAP；本地运行时缺文件与 CDN 下载失败同样会表现为空动效。
+
 **必须核对三件事，缺一不可（包装使用 `--out` 自动核对；未传 `--out` 返回退出码 3 拒绝假装通过）**：
 
 | 信号                 | 期望           | 为什么                    |

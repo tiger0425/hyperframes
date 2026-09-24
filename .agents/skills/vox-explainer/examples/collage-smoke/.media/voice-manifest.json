@@ -1,0 +1,9 @@
+{
+  "total_seconds": 42.0,
+  "lines": [
+    { "frame": "01", "seconds": 9.0, "wav": ".media/audio/voice/voice_001.wav" },
+    { "frame": "02", "seconds": 12.0, "wav": ".media/audio/voice/voice_002.wav" },
+    { "frame": "03", "seconds": 12.0, "wav": ".media/audio/voice/voice_003.wav" },
+    { "frame": "04", "seconds": 9.0, "wav": ".media/audio/voice/voice_004.wav" }
+  ]
+}

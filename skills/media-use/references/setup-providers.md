@@ -125,6 +125,12 @@ Both capabilities normalize the alpha channel on the way out through `ffmpeg`
 (already required by this skill) — see `references/resolve.md` for what that
 means for `--transparent` vs. a flat image, and `--raw-alpha` to opt out.
 
+For reproducible records, pass the locally measured hash of the selected model
+file as `--model-sha256 <64-hex-sha256>`. `resolve` normalizes it to lowercase
+and records it beside `model_file` and `seed`; the exact API graph is also
+returned as `provenance.workflow` for the caller to freeze as a workflow
+snapshot.
+
 Editing a real workflow instead? Any graph can be exported from ComfyUI as API
 JSON and posted to `POST /prompt` the same way this provider does; the two
 graphs here are the project's standardised pair, not the only possibility.

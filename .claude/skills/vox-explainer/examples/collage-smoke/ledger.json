@@ -1,0 +1,62 @@
+{
+  "fps": 30,
+  "seams": [
+    {
+      "id": "01→02",
+      "cut": 11.7,
+      "technique": "pull-sheet LEFT",
+      "exit": {
+        "selector": "#f01",
+        "axis": "x",
+        "dir": -1,
+        "dur": 0.34,
+        "travel": 12
+      },
+      "entry": {
+        "selector": "#f02",
+        "axis": "x",
+        "dir": -1,
+        "dur": 0.4,
+        "travel": 12
+      }
+    },
+    {
+      "id": "02→03",
+      "cut": 26.4,
+      "technique": "pull-sheet LEFT",
+      "exit": {
+        "selector": "#f02",
+        "axis": "x",
+        "dir": -1,
+        "dur": 0.34,
+        "travel": 12
+      },
+      "entry": {
+        "selector": "#f03",
+        "axis": "x",
+        "dir": -1,
+        "dur": 0.4,
+        "travel": 12
+      }
+    },
+    {
+      "id": "03→04",
+      "cut": 41.1,
+      "technique": "pull-sheet LEFT",
+      "exit": {
+        "selector": "#f03",
+        "axis": "x",
+        "dir": -1,
+        "dur": 0.34,
+        "travel": 12
+      },
+      "entry": {
+        "selector": "#f04",
+        "axis": "x",
+        "dir": -1,
+        "dur": 0.4,
+        "travel": 12
+      }
+    }
+  ]
+}

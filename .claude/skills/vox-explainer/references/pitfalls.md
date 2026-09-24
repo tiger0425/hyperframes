@@ -313,8 +313,8 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
   ffmpeg -v error -ss <t> -i renders/<成片>.mp4 -frames:v 1 -y slice-<t>.png
   ```
 
-- **长期方案**：把 GSAP **本地化**到项目内（`assets/vendor/gsap.min.js`）—— 确定性教条本来就禁止 render-time 取必需资产，`index.html` 里那个 CDN `<script>` 是这条的唯一漏洞。
-- **自证**：切片比对通过（画面确实在长）；顺带 `ffmpeg -v error -i 成片 -f null -` 退出码 0（整片可完整解码）。
+- **已落地**：GSAP 3.14.2 随技能资产复制到项目 `assets/vendor/gsap.min.js`，主时间轴模板与 `gen-index.mjs` 只加载这个本地路径；不再在 render-time 取必需资产。
+- **自证**：确认项目内存在 `assets/vendor/gsap.min.js`，且 `index.html` 没有 GSAP CDN 引用；切片比对通过（画面确实在长）；顺带 `ffmpeg -v error -i 成片 -f null -` 退出码 0（整片可完整解码）。
 
 ---
 
@@ -468,6 +468,13 @@ tl.fromTo('#root[data-composition-id="frame-04-roster"]', { … }, { … });
 - **修法**：帧序以**旁白清单**为准 —— `slots.mjs` 的 `VOICE`（= `.media/voice-manifest.json` 的 `lines` 顺序），`gen-index` 写 `VOICE.map((l) => l.frame)`。**别**用 `Object.keys(SLOTS)` / `Object.entries` 的键序当帧序。
 - **自证**：`seam-gate verify` 全 PASS、`audit-frames` 无 `ledger_seam_row_missing`；`ledger.json` 的 seam `id` 与真实相邻帧号一致（`01→07 → 07→12 → 12→14`）。
 - **说明**：同一坑对任何"按帧号做键"的生成器成立（`beat-at.mjs` / `draft-voice-timeline.mjs` 若按帧号聚合亦然）—— 需要帧序时，一律从清单数组取，不要从对象键取。
+
+## §26 技能内 `examples/` 比普通项目多一层，`hf.mjs` 的 CLI 搜索要够深（缺口 3 留样）
+
+- **现象**：在 `examples/collage-smoke/` 运行 `hf.mjs lint`，报「找不到 hyperframes CLI」；同一套门禁在 `.scratch` 项目里正常。
+- **根因**：`examples/collage-smoke` 到仓库根比普通项目多一层路径；`findCli()` 原来只向上找 5 层，漏掉 `packages/cli/dist/cli.js`。
+- **修法**：CLI 搜索保留项目内 `node_modules` 优先级，再把仓库路径探测扩到 6 层；不要把样例硬搬到根 `examples/` 绕过路径问题。
+- **自证**：从 `.agents` 与 `.claude` 两份样例目录运行 `hf.mjs lint/check` 均能找到 CLI 并通过。
 
 ---
 

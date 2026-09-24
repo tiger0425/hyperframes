@@ -1,0 +1,45 @@
+{
+  "name": "collage",
+  "displayName": "VOX 拼贴（教学/信息型方言）",
+  "colors": {
+    "paper": "#EDE6D6",
+    "paper-deep": "#DCD3BE",
+    "paper-shadow": "#C9BFA6",
+    "card": "#F4EEDC",
+    "ink": "#141310",
+    "ink-soft": "#57503F",
+    "rule": "#BDB39C",
+    "halftone": "#141310",
+    "tape": "#D9CDAE",
+    "stamp": "#8C2F24",
+    "string": "#B4342A",
+    "pin": "#B08A3E",
+    "cutout-shadow": "#8A806A",
+    "signal": "#D6271C",
+    "marker": "#D9A521",
+    "aging": "#8B6A34"
+  },
+  "layout": {
+    "margin": 96,
+    "gutter": 32,
+    "radius": 0,
+    "halftone-pitch": 10,
+    "halftone-radius": 1.15,
+    "halftone-opacity": 0.12,
+    "grain-opacity": 0.13,
+    "pin-size": 14,
+    "cutout-shadow-offset": "3px 4px",
+    "paper-layers": 2,
+    "aging-opacity": 0.055,
+    "stain-opacity": 0.22,
+    "crease-opacity": 0.07,
+    "fiber": 1
+  },
+  "dark": false,
+  "defaultScribbleColor": "#D6271C",
+  "base": "paper",
+  "borders": {
+    "heavy": "3px solid #141310",
+    "light": "1px solid #BDB39C"
+  }
+}

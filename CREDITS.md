@@ -38,7 +38,8 @@ broader Node.js ecosystem.
     (0.170.0) and `wireframe-portal-title` (0.181.2).
   - **[GSAP](https://gsap.com)** 3.14.2, under the [GSAP Standard License](https://gsap.com/standard-license)
     (not an OSI open-source licence). Vendored in `code-slice-hero`, `cuboid-carousel`,
-    `frost-sequence-camera-orbit` and `orbit-card` with `GSAP-NOTICE.txt`; loaded from the CDN by
+    `frost-sequence-camera-orbit` and `orbit-card` with `GSAP-NOTICE.txt`; also vendored by the
+    `vox-explainer` skill as `templates/assets/vendor/gsap.min.js` with its notice. Loaded from the CDN by
     `glass-shard-title`, `canopy-part-title` and `wireframe-portal-title`.
   - **[three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh)** 0.9.14 and
     **[opentype.js](https://github.com/opentypejs/opentype.js)** 2.x (range in the block's

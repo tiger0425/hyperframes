@@ -1,0 +1,18 @@
+{
+  "scene": "frame-02-mech",
+  "duration_s": 14.7,
+  "bgSeed": 2,
+  "rules": [
+    "waterfall-entry",
+    "vox-annotate"
+  ],
+  "exit": {
+    "vector": "up (第三张卡的红圈收笔，载体仍在动 —— 幕末落在 closer 动作中)",
+    "still_moving": true
+  },
+  "entry": {
+    "vector": "right (三张卡依次从左侧弹入；中途入场)",
+    "from_rest": false
+  },
+  "notes": "卡三的正文较长，字号压到 29px 以保证不溢出卡内容盒。"
+}

@@ -21,6 +21,7 @@ import {
   providerNamesFor,
   providerTierFor,
 } from "./lib/registry.mjs";
+import { normalizeModelSha256 } from "./lib/comfyui-provider.mjs";
 import { freezeUrl, freezeLocalFile, isDirectMediaUrl } from "./lib/freeze.mjs";
 import { findExistingAsset } from "./lib/adopt.mjs";
 import { track } from "./lib/telemetry.mjs";
@@ -100,6 +101,7 @@ const { values: args } = parseArgs({
     height: { type: "string" },
     steps: { type: "string" },
     seed: { type: "string" },
+    "model-sha256": { type: "string" },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -148,6 +150,7 @@ Options:
                   a fresh blank one (--process edits; comfyui only). Also
                   accepted as --follow-ref-size.
   --width --height --steps --seed   Generation overrides (px are snapped to 32)
+  --model-sha256 <hex>              Optional model content hash for reproduction provenance
   --json          Output JSON instead of one-line result
   --help, -h      Show this help`);
   process.exit(0);
@@ -310,6 +313,12 @@ if (args.provider && !providerMatches(args.type, args.provider)) {
   process.exit(2);
 }
 
+const modelSha256 = normalizeModelSha256(args["model-sha256"]);
+if (args["model-sha256"] !== undefined && !modelSha256) {
+  console.error("error: --model-sha256 must be a 64-character hexadecimal SHA-256");
+  process.exit(2);
+}
+
 function recordAvailable(projectDir, record) {
   if (!record) return false;
   if (record.path) return existsSync(join(projectDir, record.path));
@@ -426,6 +435,7 @@ async function run() {
     height: args.height != null ? Number(args.height) : undefined,
     steps: args.steps != null ? Number(args.steps) : undefined,
     seed: args.seed != null ? Number(args.seed) : undefined,
+    modelSha256,
     transparent: args.transparent,
     rawAlpha: args["raw-alpha"],
     followRefSize: args.followRefSize || args["follow-ref-size"],

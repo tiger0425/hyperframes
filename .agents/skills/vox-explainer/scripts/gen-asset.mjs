@@ -76,6 +76,13 @@ export const DEFAULT_SEED = 20260923;
 export const LICENSE = "qwen-research (non-commercial)";
 export const ROLES = ["anchor", "mood", "transition", "cover"];
 
+function normalizeModelSha256(value) {
+  const text = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return /^[0-9a-f]{64}$/.test(text) ? text : null;
+}
+
 function parseArgs(argv) {
   const out = {
     role: null,
@@ -87,6 +94,7 @@ function parseArgs(argv) {
     height: null,
     steps: 30,
     nn: "01",
+    modelSha256: null,
     transparent: false,
     provider: "comfyui",
     mediaUse: null,
@@ -105,6 +113,7 @@ function parseArgs(argv) {
     else if (a === "--height") out.height = Number(argv[++i]);
     else if (a === "--steps") out.steps = Number(argv[++i]);
     else if (a === "--nn") out.nn = argv[++i];
+    else if (a === "--model-sha256") out.modelSha256 = argv[++i];
     else if (a === "--transparent") out.transparent = true;
     else if (a === "--provider") out.provider = argv[++i];
     else if (a === "--media-use") out.mediaUse = argv[++i];
@@ -137,6 +146,7 @@ const HELP = `vox 生成资产命名桥（调 media-use 的 comfyui provider →
   --width/--height  目标尺寸（snap 到 32 的倍数）
   --steps       采样步数，默认 30
   --nn          产物序号，默认 01
+  --model-sha256 64 位模型文件 SHA-256（写入复现账本）
   --transparent 原生 RGBA
   --provider    默认 comfyui
   --media-use   覆盖 media-use 的 resolve.mjs 路径（也可用 env MEDIA_USE_RESOLVE）
@@ -181,6 +191,7 @@ export function buildResolveArgs({
   steps,
   width,
   height,
+  modelSha256,
   transparent,
   ref,
 }) {
@@ -199,6 +210,7 @@ export function buildResolveArgs({
     String(steps),
     "--json",
   ];
+  if (modelSha256) args.push("--model-sha256", modelSha256);
   if (width && height) args.push("--width", String(width), "--height", String(height));
   if (transparent) args.push("--transparent");
   if (ref) args.push("--process", "--image", ref);
@@ -206,7 +218,7 @@ export function buildResolveArgs({
 }
 
 /** 构造 vox 材料账本的 M5 行（对齐 issues/23 的 schema）。 */
-export function buildLedgerRow({ role, nn, rel, provenance, refRel, seed, method }) {
+export function buildLedgerRow({ role, nn, rel, provenance, refRel, seed, method, workflowPath }) {
   return {
     id: `gen-${role}-${nn}`,
     path: rel,
@@ -219,12 +231,24 @@ export function buildLedgerRow({ role, nn, rel, provenance, refRel, seed, method
     used_in: [],
     size: { width: provenance?.width ?? null, height: provenance?.height ?? null },
     model: provenance?.model || null,
+    model_file: provenance?.model_file || provenance?.model || null,
+    model_sha256: provenance?.model_sha256 || null,
     seed,
     loras: [],
     refs: refRel ? [{ path: refRel, ref_role: "style" }] : [],
+    workflow_path: workflowPath || null,
     attempts: 1,
     license: LICENSE,
   };
+}
+
+export function writeWorkflowSnapshot(projectDir, role, nn, workflow) {
+  if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) return null;
+  const rel = `.media/gen/${role}-${nn}.workflow.json`;
+  const abs = join(projectDir, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, `${JSON.stringify(workflow, null, 2)}\n`, "utf8");
+  return rel;
 }
 
 /** 追加一行账本（同 path 的旧行先移除，重跑幂等）。返回该行。 */
@@ -263,6 +287,9 @@ function main() {
     fail(`--role 必须是 ${ROLES.join(" | ")}`);
   }
   if (!args.intent || !args.intent.trim()) fail("--intent 必填");
+  if (args.modelSha256 !== null && !normalizeModelSha256(args.modelSha256)) {
+    fail("--model-sha256 必须是 64 位十六进制 SHA-256");
+  }
 
   const projectDir = resolvePath(args.project);
   const role = args.role;
@@ -301,6 +328,7 @@ function main() {
     steps: args.steps,
     width: args.width,
     height: args.height,
+    modelSha256: normalizeModelSha256(args.modelSha256),
     transparent: args.transparent,
     ref: refAbs,
   });
@@ -341,6 +369,14 @@ function main() {
   const srcAbs = resolvePath(scratchDir, rec.path);
   if (!existsSync(srcAbs)) fail(`resolve 报的产物不存在: ${rec.path}`, 1);
 
+  const provenance = rec.provenance || {};
+  if (provenance.provider?.startsWith("comfyui.") && !provenance.workflow) {
+    fail("ComfyUI 返回结果缺少 workflow graph，拒绝写入不完整的 M5 资产", 1);
+  }
+  if (args.modelSha256 && provenance.model_sha256 !== normalizeModelSha256(args.modelSha256)) {
+    fail("ComfyUI 返回的 model_sha256 与传入值不一致", 1);
+  }
+  const workflowPath = writeWorkflowSnapshot(projectDir, role, nn, provenance.workflow);
   const destAbs = join(projectDir, rel);
   mkdirSync(dirname(destAbs), { recursive: true });
   try {
@@ -352,7 +388,6 @@ function main() {
   // 清掉 scratch 的 media-use 自记账本（产物已迁走，留着会指向不存在的文件）
   rmSync(join(scratchDir, ".media"), { recursive: true, force: true });
 
-  const provenance = rec.provenance || {};
   const isEdit = !!refAbs;
   const refRel = isEdit ? toProjectRelative(projectDir, args.ref) : null;
   const row = appendLedgerRow(
@@ -364,6 +399,7 @@ function main() {
       provenance,
       refRel,
       seed: args.seed,
+      workflowPath,
       method: isEdit
         ? `reference edit from ${refRel} (seed ${args.seed})`
         : `text-to-image (seed ${args.seed})`,
@@ -372,7 +408,15 @@ function main() {
 
   if (args.json) {
     console.log(
-      JSON.stringify({ ok: true, role, path: rel, row, provider: provenance.provider || null }),
+      JSON.stringify({
+        ok: true,
+        role,
+        path: rel,
+        row,
+        provider: provenance.provider || null,
+        model_sha256: provenance.model_sha256 || null,
+        workflow_path: workflowPath,
+      }),
     );
   } else {
     const dims =
@@ -406,6 +450,7 @@ function selfTest() {
     steps: 30,
     width: 1920,
     height: 1088,
+    modelSha256: "a".repeat(64),
     transparent: false,
     ref: "/a.png",
   });
@@ -413,6 +458,11 @@ function selfTest() {
     fails.push("buildResolveArgs: 带 ref 必须走 --process --image");
   check("buildResolveArgs seed", withRef[withRef.indexOf("--seed") + 1], "7");
   check("buildResolveArgs width", withRef[withRef.indexOf("--width") + 1], "1920");
+  check(
+    "buildResolveArgs model hash",
+    withRef[withRef.indexOf("--model-sha256") + 1],
+    "a".repeat(64),
+  );
 
   const noSize = buildResolveArgs({
     prompt: "p",
@@ -446,16 +496,22 @@ function selfTest() {
     provenance: {
       provider: "comfyui.qwen_image_2_1_edit",
       model: "m.safetensors",
+      model_file: "m.safetensors",
+      model_sha256: "b".repeat(64),
       width: 1920,
       height: 1088,
     },
     refRel: ".media/assets/gen-anchor-01.png",
     seed: 20260923,
+    workflowPath: ".media/gen/mood-01.workflow.json",
     method: "reference edit",
   });
   check("row.tier", row.tier, "M5");
   check("row.license", row.license, LICENSE);
   check("row.model", row.model, "m.safetensors");
+  check("row.model_file", row.model_file, "m.safetensors");
+  check("row.model_sha256", row.model_sha256, "b".repeat(64));
+  check("row.workflow_path", row.workflow_path, ".media/gen/mood-01.workflow.json");
   check("row.seed", row.seed, 20260923);
   check("row.refs", row.refs, [{ path: ".media/assets/gen-anchor-01.png", ref_role: "style" }]);
   if (!row.path || !row.origin) fails.push("row: path/origin 必填");
@@ -463,6 +519,15 @@ function selfTest() {
   const dir = join(tmpdir(), `gen-asset-selftest-${process.pid}`);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(join(dir, ".media"), { recursive: true });
+  const workflowPath = writeWorkflowSnapshot(dir, "mood", "01", {
+    sampler: { inputs: { seed: 7 } },
+  });
+  check("writeWorkflowSnapshot path", workflowPath, ".media/gen/mood-01.workflow.json");
+  check(
+    "writeWorkflowSnapshot content",
+    JSON.parse(readFileSync(join(dir, workflowPath), "utf8")).sampler.inputs.seed,
+    7,
+  );
   writeFileSync(
     join(dir, ".media", "manifest.jsonl"),
     `${JSON.stringify({ path: ".media/assets/gen-mood-01.png", tier: "M5" })}\n${JSON.stringify({
@@ -493,7 +558,9 @@ function selfTest() {
     console.error(`gen-asset self-test FAILED:\n  - ${fails.join("\n  - ")}`);
     return 1;
   }
-  console.log("gen-asset self-test OK（前缀块 · resolve 参数 · 账本 M5 行 · 追加幂等）");
+  console.log(
+    "gen-asset self-test OK（前缀块 · resolve 参数 · 账本 M5 行 · workflow 快照 · 追加幂等）",
+  );
   return 0;
 }
 

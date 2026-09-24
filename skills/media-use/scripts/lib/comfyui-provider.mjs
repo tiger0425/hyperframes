@@ -50,6 +50,13 @@ export function snapTo32(n, fallback = 1024) {
   return Math.max(32, Math.round(v / 32) * 32);
 }
 
+export function normalizeModelSha256(value) {
+  const text = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return /^[0-9a-f]{64}$/.test(text) ? text : null;
+}
+
 // --- edit VRAM budget -------------------------------------------------------
 //
 // The edit path holds every reference AND the target latent in VRAM at once, and
@@ -619,6 +626,8 @@ export async function comfyuiImageGenerate(intent, ctx = {}, deps = {}) {
   const steps = Number(ctx.steps) > 0 ? Number(ctx.steps) : DEFAULT_STEPS;
   const seed = ctx.seed ?? 42;
   const transparent = !!ctx.transparent;
+  const model = weights(ctx);
+  const modelSha256 = normalizeModelSha256(ctx.modelSha256);
 
   const graph = buildT2IGraph({
     prompt: intent,
@@ -627,7 +636,7 @@ export async function comfyuiImageGenerate(intent, ctx = {}, deps = {}) {
     steps,
     seed,
     transparent,
-    w: weights(ctx),
+    w: model,
     prefix: "media_use",
   });
 
@@ -638,7 +647,18 @@ export async function comfyuiImageGenerate(intent, ctx = {}, deps = {}) {
     intent,
     outPath,
     provider: "comfyui.qwen_image_2_1",
-    extra: { model: weights(ctx).unet, width, height, steps, seed, transparent },
+    extra: {
+      model: model.unet,
+      model_file: model.unet,
+      ...(modelSha256 ? { model_sha256: modelSha256 } : {}),
+      workflow_format: "comfyui-api",
+      workflow: graph,
+      width,
+      height,
+      steps,
+      seed,
+      transparent,
+    },
   });
 }
 
@@ -700,6 +720,8 @@ export async function comfyuiImageEdit(intent, ctx = {}, deps = {}) {
 
   const steps = Number(ctx.steps) > 0 ? Number(ctx.steps) : DEFAULT_STEPS;
   const seed = ctx.seed ?? 42;
+  const model = weights(ctx);
+  const modelSha256 = normalizeModelSha256(ctx.modelSha256);
   const graph = buildEditGraph({
     // Same RGBA declaration generate uses: Qwen-Image-2.1 keeps alpha across an
     // edit only when the prompt still asks for a transparent result.
@@ -709,7 +731,7 @@ export async function comfyuiImageEdit(intent, ctx = {}, deps = {}) {
     height: snapTo32(height),
     steps,
     seed,
-    w: weights(ctx),
+    w: model,
     prefix: "media_use_edit",
     followRefSize: !!ctx.followRefSize,
   });
@@ -722,7 +744,11 @@ export async function comfyuiImageEdit(intent, ctx = {}, deps = {}) {
     outPath,
     provider: "comfyui.qwen_image_2_1_edit",
     extra: {
-      model: weights(ctx).unet,
+      model: model.unet,
+      model_file: model.unet,
+      ...(modelSha256 ? { model_sha256: modelSha256 } : {}),
+      workflow_format: "comfyui-api",
+      workflow: graph,
       width: snapTo32(width),
       height: snapTo32(height),
       steps,

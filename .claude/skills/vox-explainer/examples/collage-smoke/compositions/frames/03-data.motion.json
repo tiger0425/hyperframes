@@ -1,0 +1,18 @@
+{
+  "scene": "frame-03-data",
+  "duration_s": 14.7,
+  "bgSeed": 3,
+  "rules": [
+    "depth-scatter-assemble",
+    "center-outward-expansion"
+  ],
+  "exit": {
+    "vector": "down (右分支红框收笔，载体仍在动 —— 幕末落在 closer 动作中)",
+    "still_moving": true
+  },
+  "entry": {
+    "vector": "up (品牌大字从上砸入；中途入场)",
+    "from_rest": false
+  },
+  "notes": "8 枚 expert 方块用 backgroundColor tween 点亮（不是换 class），以便 seek 可复现；材料为 README About 段的 2× 实拍裁切。"
+}

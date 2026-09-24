@@ -258,7 +258,7 @@ function findCli(project) {
     dir = parent;
   }
   dir = resolve(project);
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < 6; i += 1) {
     candidates.push(join(dir, "packages", "cli", "dist", "cli.js"));
     const parent = resolve(dir, "..");
     if (parent === dir) break;

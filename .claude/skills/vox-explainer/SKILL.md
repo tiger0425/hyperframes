@@ -18,13 +18,15 @@ metadata:
 > | 2      | `projects/freetoken-v013-vox`  | 12 帧 / 267.4s / **IndexTTS 克隆音** | **词级对齐**（97 条线索全命中） |
 >
 > 两者独立复现了「槽位余量 ≈ 2.7s」「7 个稀疏音效」这些**规律**；帧数与时长是**实例取值**。
+>
+> 主时间轴的 GSAP 3.14.2 随 `init` 复制到项目 `assets/vendor/gsap.min.js`；必需运行时资产不从 CDN 获取。
 
 ## 先读这四份，再动任何东西
 
 | 顺序 | 文件                            | 为什么                                                                                                            |
 | ---- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | 1    | `references/_contract.md`       | **单一事实来源**：项目布局、命名契约、五阶段、脚本签名、两个数据点的实测数值。**含 §0.5「帧数是参数，不是规律」** |
-| 2    | `references/pitfalls.md`        | **19 条已知坑**。共同特征是**静默失败** —— 报 ok、渲染出片、但内容错了或没出现                                    |
+| 2    | `references/pitfalls.md`        | **26 条已知坑**。共同特征是**静默失败** —— 报 ok、渲染出片、但内容错了或没出现                                    |
 | 3    | `references/pipeline-stages.md` | 每阶段做什么、什么算做完                                                                                          |
 | 4    | `references/voice-sync.md`      | **画面与旁白同步**（线索表 → 词级对齐 → 构建时注入）。要"元素跟着旁白出现"就必读                                  |
 
@@ -193,7 +195,7 @@ themes/
   minimal-swiss.json            ← 现代极简瑞士平面排版风
 references/
   _contract.md                  ← 单一事实来源（先读）
-  pitfalls.md                   ← 19 条静默失败
+  pitfalls.md                   ← 26 条静默失败
   voice-sync.md                 ← 画面与旁白同步（线索表 → 词级对齐 → 注入）
   pipeline-stages.md            ← 五阶段 I/O 与出口判据
   narrative-arc.md              ← 弧线骨架 + 帧数怎么定 + 时间闭环
@@ -204,6 +206,7 @@ templates/
   frame-skeleton.html           ← 帧骨架（两个集成块 + html/body/#root 定位 + show() + 推轨选择器写法）
   frame.motion.json             ← 运动侧车
   index-timeline.html           ← 主时间轴（槽位 + 旁白轨 + 音效轨）
+  assets/vendor/gsap.min.js     ← GSAP 3.14.2 运行时，init 复制到项目
   brief.md storyboard.md script.md frame.md
 scripts/                        ← 通用门禁（init 会复制进项目 tools/vox/）
   init-vox-project.mjs          ← 起项目（支持主题预设）
@@ -217,9 +220,15 @@ scripts/                        ← 通用门禁（init 会复制进项目 tools
   theme.mjs                     ← 令牌源（themes/<name>.json → tools/theme.json）
   motion-const.mjs              ← NARRATION_LEAD / DEFAULT_LEAD + 11 个动效契约常量
   hf.mjs                        ← 门禁包装（lint / check / snapshot）
+examples/
+  collage-smoke/                ← 可提交的长期回归样例（四帧、ASMR、接缝、联系表）
 ```
 
 > 门禁链第 6 道 **`seam-gate.mjs`** 不在本技能内，在 **`motion-doctrine/scripts/`**（需无头 Chrome）。
+
+## 长期样例
+
+`examples/collage-smoke/` 是本技能随仓库保存的最小回归 fixture：四种句式、collage 纸面、四函数、接缝和 ASMR 都在里面；四条旁白是确定性静音占位，只用于槽位门禁。运行方式、资产来源和被排除的 jev 真实材料见该目录的 `README.md`。
 
 ### 作者侧脚本（随项目走，不在本技能的 `scripts/` 里）
 
@@ -234,5 +243,5 @@ scripts/                        ← 通用门禁（init 会复制进项目 tools
 | `tools/torn.mjs`            | 确定性**低频撕边** `clip-path`（`torn(w,{seed})`）；按宽度分档、含长裂口                                                                     |
 | `tools/synthesize_voice.py` | 旁白合成 + 量真实秒数 + 写清单（支持单条重跑并回）                                                                                           |
 | `tools/align-cues.py`       | 词级对齐（SCRIPT.md + cues.json + faster-whisper → cue-times.json）                                                                          |
-| `tools/gen-asset.mjs`       | 生成资产命名桥（调 `media-use` 的 comfyui provider → `.media/assets/gen-<role>-<nn>.png` + M5 账本行；一致性 = 锚图 + 固定 seed + 参考编辑） |
+| `tools/gen-asset.mjs`       | 生成资产命名桥（调 `media-use` 的 comfyui provider → `.media/assets/gen-<role>-<nn>.png` + `.media/gen/<role>-<nn>.workflow.json` + M5 账本行，含 `model_file`/`model_sha256`/`seed`；一致性 = 锚图 + 固定 seed + 参考编辑） |
 | `tools/shot.ps1`            | 本机 Chrome 无头实拍真实页面（2× → 3788×1960）                                                                                               |

@@ -1,0 +1,18 @@
+{
+  "scene": "frame-01-hook",
+  "duration_s": 11.7,
+  "bgSeed": 1,
+  "rules": [
+    "kinetic-beat-slam",
+    "spring-pop-entrance"
+  ],
+  "exit": {
+    "vector": "down (红圈收笔，帧根仍在极缓推轨 —— 幕末落在 closer 动作中)",
+    "still_moving": true
+  },
+  "entry": {
+    "vector": "up (大字从上方 70px 砸入；中途入场，上一幕载体仍在动)",
+    "from_rest": false
+  },
+  "notes": "红圈路径的 dash 在 skeleton 线索处画出；帧根推轨 1.0→1.05 跨满整幕（**不由 crossfade 覆盖 —— index.html 没有 crossfade**）。"
+}

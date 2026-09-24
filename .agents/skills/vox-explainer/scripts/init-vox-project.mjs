@@ -26,6 +26,7 @@ const TEMPLATES = join(SKILL_ROOT, "templates");
 
 /** 文档级占位符：init 负责填。逐帧占位符（NN / slug / COMPOSITION_ID / DURATION / …）留给作者。 */
 const DOC_LEVEL = ["TITLE", "FRAMES", "TOTAL", "CHANNEL_TAG", "AUDIENCE"];
+const VENDOR_FILES = ["gsap.min.js", "GSAP-NOTICE.txt"];
 
 /**
  * **预期残留**：这些占位符在 `_templates/` 的逐帧模板里是**故意留着**的，
@@ -105,6 +106,13 @@ function main() {
     console.error(`[env] 找不到 templates 目录: ${TEMPLATES}`);
     return 2;
   }
+  for (const file of VENDOR_FILES) {
+    const source = join(TEMPLATES, "assets", "vendor", file);
+    if (!existsSync(source)) {
+      console.error(`[env] 缺少内置 GSAP 资产: ${source}`);
+      return 2;
+    }
+  }
   if (existsSync(target)) {
     const entries = readdirSync(target);
     if (entries.length > 0 && !args.force) {
@@ -129,6 +137,7 @@ function main() {
     "compositions/frames",
     "compositions/components",
     "assets/fonts",
+    "assets/vendor",
     ".media/assets",
     ".media/audio/voice",
     ".media/audio/sfx",
@@ -215,6 +224,10 @@ function main() {
       cpSync(join(fontsDir, f), join(target, "assets", "fonts", f));
       written.push(`assets/fonts/${f}`);
     }
+  }
+  for (const file of VENDOR_FILES) {
+    cpSync(join(TEMPLATES, "assets", "vendor", file), join(target, "assets", "vendor", file));
+    written.push(`assets/vendor/${file}`);
   }
 
   // ── 脚本复制进项目（自包含：接手者不需要知道技能目录在哪）。
@@ -310,6 +323,7 @@ function main() {
 - **旁白锁定后不许改文案**；要改就得重跑该条 TTS 并重算槽位。
 - **每一帧一个作者，写入范围互斥**；编辑帧期间不要开 \`preview\`。
 - 两个集成块（\`hf-scene-visibility-leak-guard\` / \`hf-js-hide-reveal-pass\`）**原样保留，别删**。
+- 主时间轴的 GSAP 从 \`assets/vendor/gsap.min.js\` 加载；不要改回 CDN。
 
 ## 技能文档（不在本项目内）
 

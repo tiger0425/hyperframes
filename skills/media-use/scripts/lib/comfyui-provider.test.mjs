@@ -13,6 +13,7 @@ import {
   EDIT_PIXEL_BUDGET,
   ensureComfyui,
   normalizeAlpha,
+  normalizeModelSha256,
   planEditRefs,
   readImageSize,
   runGraph,
@@ -111,6 +112,14 @@ test("snapTo32 snaps to Qwen-Image-2.1's required multiple and floors bad input"
   assert.equal(snapTo32(undefined, 512), 512);
   assert.equal(snapTo32(-5, 512), 512);
   assert.equal(snapTo32("2048"), 2048);
+});
+
+test("normalizeModelSha256 accepts a case-insensitive hash and rejects malformed values", () => {
+  const hash = "A".repeat(64);
+  assert.equal(normalizeModelSha256(hash), "a".repeat(64));
+  assert.equal(normalizeModelSha256("g".repeat(64)), null);
+  assert.equal(normalizeModelSha256("A".repeat(63)), null);
+  assert.equal(normalizeModelSha256(undefined), null);
 });
 
 test("readImageSize reads PNG dimensions from the IHDR header", () => {
@@ -356,7 +365,14 @@ test("comfyuiImageGenerate queues a graph and freezes the returned PNG", async (
 
   const res = await comfyuiImageGenerate(
     "a modern rally car",
-    { width: 1000, height: 1000, steps: 20, seed: 5, transparent: true },
+    {
+      width: 1000,
+      height: 1000,
+      steps: 20,
+      seed: 5,
+      transparent: true,
+      modelSha256: "C".repeat(64),
+    },
     {
       fetchFn,
       sleep: noSleep,
@@ -373,6 +389,10 @@ test("comfyuiImageGenerate queues a graph and freezes the returned PNG", async (
   assert.equal(res.metadata.provider, "comfyui.qwen_image_2_1");
   assert.equal(res.metadata.provenance.width, 992); // 1000 snapped to 32
   assert.equal(res.metadata.provenance.transparent, true);
+  assert.equal(res.metadata.provenance.model_file, "qwen_image_2.1_int8_convrot.safetensors");
+  assert.equal(res.metadata.provenance.model_sha256, "c".repeat(64));
+  assert.equal(res.metadata.provenance.workflow_format, "comfyui-api");
+  assert.equal(res.metadata.provenance.workflow.sampler.inputs.seed, 5);
   assert.equal(files.size, 1);
   assert.ok(files.get(res.localPath).length > 0);
 
@@ -447,7 +467,7 @@ test("comfyuiImageEdit uploads each reference and queues an edit graph", async (
 
   const res = await comfyuiImageEdit(
     "swap the outfit",
-    { images: refs },
+    { images: refs, modelSha256: "d".repeat(64) },
     {
       fetchFn,
       sleep: noSleep,
@@ -461,6 +481,9 @@ test("comfyuiImageEdit uploads each reference and queues an edit graph", async (
   );
   assert.equal(res.metadata.provider, "comfyui.qwen_image_2_1_edit");
   assert.equal(res.metadata.provenance.references, 2);
+  assert.equal(res.metadata.provenance.model_sha256, "d".repeat(64));
+  assert.equal(res.metadata.provenance.workflow_format, "comfyui-api");
+  assert.ok(res.metadata.provenance.workflow.load1);
   // Output defaults to the first reference's framing (1080 -> snapped 1088).
   assert.equal(res.metadata.provenance.height, 1088);
 
@@ -611,8 +634,7 @@ test("comfyuiImageEdit down-scales an over-budget reference instead of risking s
   assert.ok(
     execRuns.some(
       (r) =>
-        r.argv.includes("-vf") &&
-        String(r.argv[r.argv.indexOf("-vf") + 1]).startsWith("scale="),
+        r.argv.includes("-vf") && String(r.argv[r.argv.indexOf("-vf") + 1]).startsWith("scale="),
     ),
   );
 });
@@ -641,8 +663,7 @@ test("comfyuiImageEdit leaves a within-budget reference untouched", async () => 
   assert.ok(
     !execRuns.some(
       (r) =>
-        r.argv.includes("-vf") &&
-        String(r.argv[r.argv.indexOf("-vf") + 1]).startsWith("scale="),
+        r.argv.includes("-vf") && String(r.argv[r.argv.indexOf("-vf") + 1]).startsWith("scale="),
     ),
   );
 });
