@@ -56,12 +56,12 @@
 | 退出码             | 0              | —                  |
 | `samples.Count`    | **> 0**        | 运行时阶段根本没跑 |
 | `contrast.checked` | **> 0**        | 对比度审计根本没跑 |
-| `duration`         | **≈ 成片总长** | 它读到的是一张空页 |
+| `duration`         | **≈ `index.html` 根总长**（差值 ≤ 0.1s） | 它读到的是一张空页或错误时间轴 |
 
 **本技能的 `scripts/hf.mjs`** 提供了程序化自验证通道：
 
 1. 对 `check` 固定注入 `--no-browser-gpu`；
-2. 支持 `--out <file>` 参数：内部使用 `fs.openSync` 传递文件描述符给子进程，避开 Node 管道与 PowerShell 编码重定向，并在子进程完成后自动解析 JSON，严格校验 `errors === 0`、`samples.length > 0`、`contrast.checked > 0` 和 `duration > 0`。校验通过返回退出码 0，校验失败返回退出码 1；
+2. 支持 `--out <file>` 参数：内部使用 `fs.openSync` 传递文件描述符给子进程，避开 Node 管道与 PowerShell 编码重定向，并在子进程完成后自动解析 JSON，严格校验 `errors === 0`、`samples.length > 0`、`contrast.checked > 0`，以及 `duration` 与 `index.html` 根 `data-duration` 的差值不超过 0.1 秒。校验通过返回退出码 0，校验失败返回退出码 1；
 3. **严格防假冒通过**：若未传 `--out <file>`，脚本无法执行程序化自核对，将按契约返回**退出码 3**，禁止在自动化流水线中假装通过！
 
 ```powershell

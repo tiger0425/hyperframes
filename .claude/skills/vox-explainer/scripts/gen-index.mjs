@@ -66,7 +66,7 @@ const SFX = existsSync(sfxPath) ? JSON.parse(readFileSync(sfxPath, "utf8")) : []
 /**
  * 纸 ASMR 清单：可选 tools/asmr.json（`[[slug, at, volume?], …]`）—— `slug` 对应
  * `.media/audio/asmr/asmr-<slug>.wav`。轨道 **12**（独立于音效轨 11，issues/19 §4）。
- * **落点纪律**：入点只落槽位余量（≈2.7s 静默），禁落进旁白窗口；3–8 处/片（违规只告警，不阻断生成）。
+ * **落点纪律**：完整音频区间只落槽位余量（≈2.7s 静默），禁与旁白窗口重叠；3–8 处/片（违规阻断生成）。
  */
 const asmrPath = join(ROOT, "tools", "asmr.json");
 const ASMR = existsSync(asmrPath) ? JSON.parse(readFileSync(asmrPath, "utf8")) : [];
@@ -176,27 +176,41 @@ const sfx = SFX.map(
              data-start="${f(at)}" data-duration="0.5" data-track-index="11"></audio>`,
 ).join("\n");
 
-// ── 纸 ASMR（轨道 12）：入点纪律见上。校验只告警（生成器不做门禁，门禁在 audit-frames）。
+// ── 纸 ASMR（轨道 12）：校验完整音频区间，旁白窗口内禁止落点。
 const asmrWindows = VOICE.map((l) => {
   const vStart = STARTS[l.frame] + NARRATION_LEAD;
   return { frame: l.frame, start: vStart, end: vStart + l.seconds };
 });
-let asmrViolations = 0;
-const asmr = ASMR.map(([slug, at, vol], i) => {
+const asmrViolations = [];
+const ASMR_EPSILON = 0.001;
+const asmr = ASMR.map((entry, i) => {
+  const [slug, atValue, vol] = Array.isArray(entry) ? entry : [null, NaN, undefined];
+  const at = Number(atValue);
   const src = `.media/audio/asmr/asmr-${slug}.wav`;
   const dur = wavDuration(join(ROOT, src)) ?? 0.5;
   if (!existsSync(join(ROOT, src)))
     console.warn(`[asmr] 缺素材 ${src}（先跑 gen-asmr / 通道 G 入库）`);
-  const hit = asmrWindows.find((w) => at >= w.start - 0.001 && at < w.end);
-  if (hit) {
-    asmrViolations += 1;
-    console.warn(
-      `[asmr] 违规：${slug} 入点 ${at}s 落进 frame-${hit.frame} 旁白窗口 ${f(hit.start)}~${f(hit.end)}s —— 只许落槽位余量`,
+  if (!slug || !Number.isFinite(at) || at < 0 || !Number.isFinite(dur) || dur <= 0) {
+    const message = `${src} 的入点或时长无效（at=${atValue}, duration=${dur}）`;
+    asmrViolations.push(message);
+    console.warn(`[asmr] 违规：${message}`);
+  } else {
+    const end = at + dur;
+    const hits = asmrWindows.filter(
+      (w) => at < w.end - ASMR_EPSILON && end > w.start + ASMR_EPSILON,
     );
+    for (const hit of hits) {
+      const message = `${slug} 区间 ${f(at)}~${f(end)}s 与 frame-${hit.frame} 旁白窗口 ${f(hit.start)}~${f(hit.end)}s 重叠`;
+      asmrViolations.push(message);
+      console.warn(`[asmr] 违规：${message} —— 只许落槽位余量`);
+    }
   }
   return `      <audio id="asmr-${String(i + 1).padStart(2, "0")}" src="${src}"
-             data-start="${f(at)}" data-duration="${f(dur)}" data-track-index="12" data-volume="${vol ?? ASMR_VOLUME}"></audio>`;
+              data-start="${f(Number.isFinite(at) ? at : 0)}" data-duration="${f(dur)}" data-track-index="12" data-volume="${vol ?? ASMR_VOLUME}"></audio>`;
 }).join("\n");
+if (asmrViolations.length) {
+  throw new Error(`[asmr] ${asmrViolations.length} 个违规，拒绝生成 index.html`);
+}
 if (ASMR.length && (ASMR.length < 3 || ASMR.length > 8)) {
   console.warn(`[asmr] 注意：${ASMR.length} 处（规格 3–8 处/片）`);
 }
@@ -233,7 +247,7 @@ ${voices}
       <!-- ══ 音效轨（track 11）：稀疏标点，不是垫床 ══ -->
 ${sfx}
 
-      <!-- ══ 纸 ASMR 轨（track 12）：入点只落槽位余量、3–8 处/片、不 ducking 口播（issues/19 §4）══ -->
+      <!-- ══ 纸 ASMR 轨（track 12）：完整区间只落槽位余量、3–8 处/片、不 ducking 口播（issues/19 §4）══ -->
 ${asmr}
     </div>
 

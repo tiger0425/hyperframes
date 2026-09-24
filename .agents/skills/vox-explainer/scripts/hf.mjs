@@ -4,7 +4,7 @@
  *
  * 存在的唯一理由：`check` 有两类**静默失败**，只看退出码分不出来。
  *
- *   A. 运行时阶段静默空跑却报 ok —— 输出里 duration=0 / samples=[] / contrast.checked=0。
+ *   A. 运行时阶段静默空跑却报 ok —— 输出里 duration 缺失/不匹配、samples=[] 或 contrast.checked=0。
  *      包装对 check 固定注入 `--no-browser-gpu`（走软件渲染 SwiftShader）来避免它。
  *
  *   B. 运行时阶段被**环境**打断，却长得像代码有 bug —— 本项目在受限沙箱内实测到
@@ -13,29 +13,29 @@
  *      实测 `--no-browser-gpu` **并不能**绕过它（Chrome 仍然要用管道通信）。
  *
  * 所以包装不去猜，而是把两种情形分开说清，并把"自证"责任交还给人/CI：
- *   · lint 可以直接靠退出码判定（它不需要浏览器）
- *   · check **只靠退出码不够**，必须看 --json 里的三件事（见下）
+ *   · lint 由包装读取 JSON 的 `ok/errorCount/warningCount`，warning 也会阻断（它不需要浏览器）
+ *   · check **只靠退出码不够**，必须核对 samples、contrast 与根时长（见下）
  *
  * ## check 的自证要求（唯一可信的通过条件）
  *
  *   1. 退出码 0
  *   2. `samples.length > 0`    —— 否则运行时阶段根本没跑
  *   3. `contrast.checked > 0`  —— 否则对比度审计根本没跑
- *   4. `duration > 0`          —— 否则它读到的是一张空页
+ *   4. `duration` 与 `index.html` 根 `data-duration` 相差不超过 0.1 秒
  *   5. 各段 `errorCount` / `warningCount` 合计为 0 —— 与文档判据"0 error 且 0 warning"一致
  *
- * 受限沙箱内无法程序化捕获 CLI 的 stdout（见下），因此第 2–4 项需要人工/CI 核对。
+ * 受限沙箱内仍可能无法启动浏览器；传入 `--out` 时，包装会程序化核对上述信号。
  * **本包装绝不会在没有核对的情况下声称 check 通过。**
  *
- * ## 为什么不自作聪明去解析输出
+ * ## 输出捕获
  *
- * 受限沙箱禁止命名管道：从 Node 里 `spawnSync(..., {stdio: 'pipe'})` 会直接 EPERM，
- * 所以包装内部拿不到 CLI 的 stdout。用 shell 重定向也走不通（那要经过 shell 管道）。
- * 因此：**用 shell 重定向自己把 --json 接到文件**，再核对（下面的 SAFE 用法）。
+ * 受限沙箱禁止命名管道，不能依赖 `spawnSync(..., {stdio: 'pipe'})`。
+ * 包装用 `openSync` 把 CLI 的 stdout 接到 JSON 文件，再在子进程结束后解析。
+ * `check` 需要显式 `--out`；`lint --json` 默认使用临时文件并在解析后清理。
  *
  * ## 用法
  *
- *   # 静态结构（退出码即判据）
+ *   # 静态结构（包装自动读取 JSON，error 与 warning 都必须为 0）
  *   node hf.mjs lint --json
  *
  *   # 浏览器门禁 —— 标准自验证写法（内部用 openSync fd 接走，避免 PowerShell 重定向 bug 与沙箱管道限制）
@@ -45,13 +45,23 @@
  *   node hf.mjs snapshot --at 12.5 --output .hyperframes/snaps-x --timeout 30000
  *
  * 退出码契约：
- *   0 = 门禁通过且经自验证（check 需要 --out 并核对 samples/contrast/duration 全部 > 0）
+ *   0 = 门禁通过且经自验证（check 需要 --out 并核对 samples/contrast 与根时长）
  *   1 = 门禁未通过（代码或片子有 bug）
  *   2 = 用法错误或环境边界（找不到 CLI，沙箱禁止等）
  *   3 = check 未经自验证（未提供 --out，无法程序化自证）
  */
 import { spawnSync } from "node:child_process";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
 const SANDBOX_PROBE = ["E_PERM", "sandbox", "命名管道", "named pipe"];
@@ -63,6 +73,37 @@ const NARRATION_LEAD = 0.3;
 const DEFAULT_LEAD = 0.2;
 /** 对拍默认半窗（秒）—— `cue ± window` 两张快照（issues/22 §6 规则 10）。 */
 const DEFAULT_PAIR_WINDOW = 0.15;
+const CHECK_DURATION_TOLERANCE = 0.1;
+
+function readDeclaredDuration(project) {
+  const indexPath = join(project, "index.html");
+  if (!existsSync(indexPath)) return null;
+  const html = readFileSync(indexPath, "utf8");
+  const root = html.match(/<div\b[^>]*\bid="root"[^>]*>/)?.[0];
+  const value = root?.match(/data-duration="([\d.]+)"/)?.[1];
+  return value === undefined ? null : Number(value);
+}
+
+function readJsonOutput(path) {
+  const raw = readFileSync(path, "utf8");
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start === -1 || end <= start) throw new Error("输出未包含有效 JSON");
+  return { raw, data: JSON.parse(raw.slice(start, end + 1)) };
+}
+
+function hasCountPair(section) {
+  return (
+    section !== null &&
+    typeof section === "object" &&
+    typeof section.errorCount === "number" &&
+    Number.isFinite(section.errorCount) &&
+    section.errorCount >= 0 &&
+    typeof section.warningCount === "number" &&
+    Number.isFinite(section.warningCount) &&
+    section.warningCount >= 0
+  );
+}
 
 function parse(argv) {
   const out = {
@@ -71,7 +112,9 @@ function parse(argv) {
     outPath: null,
     rest: [],
     pair: false,
+    pairLowHit: false,
     cue: null,
+    minAlignHit: 0.8,
     window: DEFAULT_PAIR_WINDOW,
     frame: null,
     output: null,
@@ -86,7 +129,9 @@ function parse(argv) {
     } else if (a === "--out") {
       out.outPath = argv[++i];
     } else if (a === "--pair") out.pair = true;
+    else if (a === "--pair-low-hit") out.pairLowHit = true;
     else if (a === "--cue") out.cue = argv[++i];
+    else if (a === "--min-align-hit") out.minAlignHit = Number(argv[++i]);
     else if (a === "--window") out.window = Number(argv[++i]);
     else if (a === "--frame") out.frame = argv[++i];
     else if (a === "--output" || a === "-o") out.output = argv[++i];
@@ -95,7 +140,7 @@ function parse(argv) {
   out.sawProject = sawProject;
   // 这四个开关只有 `snapshot --pair` 认；其它命令要**原样透传**给 CLI
   // （否则 `snapshot --at … -o <dir>` 的输出目录会被吞掉）。
-  if (!out.pair) {
+  if (!out.pair && !out.pairLowHit) {
     if (out.frame !== null) out.rest.push("--frame", out.frame);
     if (out.output !== null) out.rest.push("--output", out.output);
     if (out.cue !== null) out.rest.push("--cue", out.cue);
@@ -140,7 +185,7 @@ function resolveCue(project, cueKey, frameArg) {
   const wantNN = frameArg === null ? null : String(frameArg).padStart(2, "0");
   const hits = [];
   for (const [frameKey, fr] of Object.entries(table)) {
-    const nn = String(fr?.nn ?? "");
+    const nn = String(fr?.nn ?? frameKey.split("-")[0]).padStart(2, "0");
     if (wantNN && nn !== wantNN) continue;
     for (const c of fr?.cues ?? []) {
       if (c?.id === cueKey) hits.push({ frameKey, nn, cueT: Number(c.t) });
@@ -242,8 +287,70 @@ function runPairSnapshot(project, args, cli) {
   }
   console.log(`[hf] --pair 通过（两张不同）：${pngs[0]} vs ${pngs[1]}`);
   console.log("     ⚠️ 字节不同只说明「有变化」—— 仍须用 read_image 亲眼看元素是否跟着词出现");
-  console.log("     （verification.md §9：抽 10 条线索做同样的对拍）。");
+  console.log("     （verification.md §9：固定抽样与低命中帧都要做同样的对拍）。");
+
   console.log(`     证据：${outDir}`);
+  return 0;
+}
+
+function runLowHitPairSnapshots(project, args, cli) {
+  if (args.cue) {
+    console.error("snapshot --pair-low-hit 不能与 --cue 同时使用");
+    return 2;
+  }
+  const threshold = Number(args.minAlignHit);
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+    console.error("--min-align-hit 必须在 0 到 1 之间");
+    return 2;
+  }
+  const tablePath = join(project, "tools", "cue-times.json");
+  if (!existsSync(tablePath)) {
+    console.error(`[hf] 找不到 ${tablePath}`);
+    return 2;
+  }
+  let table;
+  try {
+    table = JSON.parse(readFileSync(tablePath, "utf8"));
+  } catch (e) {
+    console.error(`[hf] cue-times.json 不是合法 JSON：${e.message}`);
+    return 2;
+  }
+  const rows = Object.entries(table).map(([frameKey, fr]) => ({
+    frameKey,
+    fr,
+    hit: Number(fr?.align_hit),
+  }));
+  const missingQuality = rows.filter(({ hit }) => !Number.isFinite(hit));
+  if (missingQuality.length) {
+    console.error(
+      `[hf] ${missingQuality.length} 帧缺少 align_hit；先重跑 align-cues.py，再做低命中对拍`,
+    );
+    return 2;
+  }
+  const low = rows.filter(({ hit }) => hit < threshold).sort((a, b) => a.hit - b.hit);
+  if (low.length === 0) {
+    console.log(`[hf] 没有 align_hit < ${threshold} 的帧，跳过低命中对拍`);
+    return 0;
+  }
+  for (const { frameKey, fr, hit } of low) {
+    const cues = Array.isArray(fr?.cues) ? fr.cues : [];
+    if (cues.length === 0) {
+      console.error(`[hf] frame ${frameKey} 没有可对拍线索`);
+      return 2;
+    }
+    const cue = cues.reduce((best, current) => {
+      const score = Number(current?.align_distance ?? 0);
+      const bestScore = Number(best?.align_distance ?? 0);
+      return !best || score >= bestScore ? current : best;
+    }, null);
+    const nn = String(fr.nn ?? frameKey.split("-")[0]).padStart(2, "0");
+    const output = args.output
+      ? `${args.output}-${nn}-${cue.id}`
+      : join(project, ".hyperframes", `pair-low-${nn}-${cue.id}`);
+    console.log(`[hf] 低命中帧 ${nn} align_hit=${(hit * 100).toFixed(1)}%，对拍 cue=${cue.id}`);
+    const result = runPairSnapshot(project, { ...args, cue: cue.id, frame: nn, output }, cli);
+    if (result !== 0) return result;
+  }
   return 0;
 }
 
@@ -278,6 +385,9 @@ function main() {
     console.error(
       "       node hf.mjs snapshot --pair --cue <线索名> [--window 0.15] [--frame NN]   # 线索对拍",
     );
+    console.error(
+      "       node hf.mjs snapshot --pair-low-hit [--min-align-hit 0.8]                         # 低命中帧对拍",
+    );
     return 2;
   }
   const project = resolve(args.project);
@@ -295,13 +405,20 @@ function main() {
   if (cmd === "snapshot" && args.pair) {
     return runPairSnapshot(project, args, cli);
   }
+  if (cmd === "snapshot" && args.pairLowHit) {
+    return runLowHitPairSnapshots(project, args, cli);
+  }
   if (
     cmd === "check" &&
     !rest.some((a) => a.startsWith("--browser-gpu") || a.startsWith("--no-browser-gpu"))
   ) {
     rest.push("--no-browser-gpu");
   }
-  if (cmd === "check" && args.outPath && !rest.includes("--json")) {
+  const lintRequestedJson = cmd === "lint" && rest.includes("--json");
+  if (cmd === "lint" && !rest.includes("--json")) {
+    rest.push("--json");
+  }
+  if ((cmd === "check" || cmd === "lint") && args.outPath && !rest.includes("--json")) {
     rest.push("--json");
   }
   if (cmd === "snapshot" && !rest.includes("--no-end") && !rest.includes("--end")) {
@@ -314,9 +431,16 @@ function main() {
 
   let outFd = null;
   let outAbsPath = null;
-  if (cmd === "check" && args.outPath) {
-    outAbsPath = isAbsolute(args.outPath) ? args.outPath : resolve(project, args.outPath);
-    mkdirSync(dirname(outAbsPath), { recursive: true });
+  let tempDir = null;
+  const lintJson = cmd === "lint";
+  if ((cmd === "check" && args.outPath) || lintJson) {
+    if (args.outPath) {
+      outAbsPath = isAbsolute(args.outPath) ? args.outPath : resolve(project, args.outPath);
+      mkdirSync(dirname(outAbsPath), { recursive: true });
+    } else {
+      tempDir = mkdtempSync(join(tmpdir(), "vox-hf-"));
+      outAbsPath = join(tempDir, `${cmd}.json`);
+    }
     outFd = openSync(outAbsPath, "w");
   }
 
@@ -351,51 +475,73 @@ function main() {
     }
 
     if (outAbsPath && existsSync(outAbsPath)) {
-      const rawOutput = readFileSync(outAbsPath, "utf8");
-      const startIdx = rawOutput.indexOf("{");
-      const endIdx = rawOutput.lastIndexOf("}");
-      if (startIdx === -1 || endIdx <= startIdx) {
-        console.error("");
-        console.error("─".repeat(72));
-        console.error(`[hf] check 错误: 输出未包含有效 JSON。文件内容位于: ${outAbsPath}`);
-        return 1;
-      }
-      let data;
+      let parsed;
       try {
-        data = JSON.parse(rawOutput.slice(startIdx, endIdx + 1));
+        parsed = readJsonOutput(outAbsPath);
       } catch (err) {
         console.error("");
         console.error("─".repeat(72));
         console.error(`[hf] check 错误: 解析 JSON 失败: ${err.message}`);
         return 1;
       }
-
-      const sampleCount = data.layout?.samples?.length ?? 0;
-      const contrastChecked = data.contrast?.checked ?? 0;
-      const duration = data.layout?.duration ?? 0;
+      const data = parsed.data;
+      const sampleCount = Array.isArray(data.layout?.samples) ? data.layout.samples.length : 0;
+      const contrastValue = data.contrast?.checked;
+      const contrastChecked =
+        typeof contrastValue === "number" && Number.isFinite(contrastValue) ? contrastValue : 0;
+      const durationValue = data.layout?.duration;
+      const duration =
+        typeof durationValue === "number" && Number.isFinite(durationValue) ? durationValue : NaN;
+      const declaredDuration = readDeclaredDuration(project);
+      const durationDelta =
+        declaredDuration === null ? null : Math.abs(duration - declaredDuration);
+      const durationOk =
+        Number.isFinite(duration) &&
+        duration > 0 &&
+        declaredDuration !== null &&
+        Number.isFinite(declaredDuration) &&
+        durationDelta !== null &&
+        durationDelta <= CHECK_DURATION_TOLERANCE;
       const sections = [data.lint, data.runtime, data.layout, data.motion, data.contrast];
-      const errors =
-        sections.reduce((n, s) => n + (s?.errorCount ?? 0), 0) || (data.ok === false ? 1 : 0);
-      const warnings = sections.reduce((n, s) => n + (s?.warningCount ?? 0), 0);
+      const sectionCountsValid = sections.every(hasCountPair);
+      const errors = sectionCountsValid
+        ? sections.reduce((n, section) => n + section.errorCount, 0)
+        : 1;
+      const warnings = sectionCountsValid
+        ? sections.reduce((n, section) => n + section.warningCount, 0)
+        : 1;
 
       const passed =
-        errors === 0 && warnings === 0 && sampleCount > 0 && contrastChecked > 0 && duration > 0;
+        data.ok === true &&
+        sectionCountsValid &&
+        errors === 0 &&
+        warnings === 0 &&
+        sampleCount > 0 &&
+        contrastChecked > 0 &&
+        durationOk;
       console.log("");
       console.log("─".repeat(72));
       if (!passed) {
         console.error("[hf] check 自核对未通过：");
+        if (!sectionCountsValid) {
+          console.error("     · sections/counts: 缺少 section 或有效的 errorCount/warningCount");
+        }
         console.error(`     · errors: ${errors} (预期 0)`);
         console.error(`     · warnings: ${warnings} (预期 0)`);
         console.error(`     · samples: ${sampleCount} (预期 > 0)`);
         console.error(`     · contrast.checked: ${contrastChecked} (预期 > 0)`);
-        console.error(`     · duration: ${duration}s (预期 > 0)`);
+        console.error(
+          `     · duration: ${duration}s；index.html 声明 ${declaredDuration ?? "缺失"}s；差值 ${
+            durationDelta === null ? "不可计算" : `${durationDelta.toFixed(3)}s`
+          }（容差 ${CHECK_DURATION_TOLERANCE}s）`,
+        );
         return 1;
       }
 
       console.log("[hf] check 自验证通过 (exit 0):");
       console.log(`     · samples: ${sampleCount}`);
       console.log(`     · contrast.checked: ${contrastChecked}`);
-      console.log(`     · duration: ${duration}s`);
+      console.log(`     · duration: ${duration}s (index.html: ${declaredDuration}s)`);
       console.log(`     · errors: 0`);
       console.log(`     · warnings: 0`);
       console.log(`     · 报告已写入: ${outAbsPath}`);
@@ -406,10 +552,14 @@ function main() {
     console.log("─".repeat(72));
     console.log("[hf] check 退出码 0 —— 但未提供 --out <file> 进行程序化自核对。");
     console.log("     按契约返回退出码 3 (未自验证)。");
-    console.log("     必须核对 --json 里的三项（防止运行时/对比度阶段静默空跑）：");
+    console.log("     必须核对 --json 里的四项（防止运行时/对比度阶段静默空跑）：");
+
     console.log("       samples.Count    > 0     （为 0 = 运行时阶段根本没跑）");
     console.log("       contrast.checked > 0     （为 0 = 对比度审计根本没跑）");
-    console.log("       duration         ≈ 成片总长（为 0 = 读到的是空页）");
+    console.log(
+      "       duration         ≈ index.html 根总长（差值 ≤ 0.1s；不匹配 = 读到错误时间轴）",
+    );
+
     console.log("");
     console.log("     标准自验证用法 (避免 PowerShell 重定向编码问题与沙箱管道限制)：");
     console.log("       node hf.mjs check --json --out .hyperframes/check-latest.json");
@@ -418,11 +568,48 @@ function main() {
   }
 
   if (cmd === "lint") {
-    if (code !== 0) {
-      console.error(`\n[hf] lint 退出码 ${code} —— 有 error。lint 不需要浏览器，退出码即判据。`);
+    if (lintJson && outAbsPath && existsSync(outAbsPath)) {
+      let parsed;
+      try {
+        parsed = readJsonOutput(outAbsPath);
+      } catch (err) {
+        if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+        console.error(`[hf] lint 错误: 解析 JSON 失败: ${err.message}`);
+        return 1;
+      }
+      if (!args.outPath && lintRequestedJson)
+        process.stdout.write(parsed.raw.endsWith("\n") ? parsed.raw : `${parsed.raw}\n`);
+      const errors = parsed.data.errorCount;
+      const warnings = parsed.data.warningCount;
+      const shapeOk =
+        typeof errors === "number" &&
+        Number.isFinite(errors) &&
+        errors >= 0 &&
+        typeof warnings === "number" &&
+        Number.isFinite(warnings) &&
+        warnings >= 0;
+      if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+      if (code !== 0 || !shapeOk || parsed.data.ok !== true || errors > 0) {
+        console.error(`[hf] lint 失败：errors=${errors}, warnings=${warnings}, exit=${code}`);
+        return 1;
+      }
+      if (warnings > 0) {
+        console.error(`[hf] lint 失败：warningCount=${warnings}，门禁要求 warning 也清零`);
+        return 1;
+      }
+      console.error("[hf] lint 通过：0 error / 0 warning。");
+      return 0;
+    }
+    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (lintJson) {
+      console.error("[hf] lint 错误: --json 没有产生可读取的 JSON 输出");
       return 1;
     }
-    console.log("\n[hf] lint 退出码 0。注意：ok=true 只表示没有 error，还要确认 warning 也是 0。");
+    if (code !== 0) {
+      console.error(`\n[hf] lint 退出码 ${code} —— 未取得可核对的 JSON 报告。`);
+      return 1;
+    }
+    console.log("\n[hf] lint 退出码 0，但未取得 JSON 报告，不能判定门禁通过。");
     return 0;
   }
 

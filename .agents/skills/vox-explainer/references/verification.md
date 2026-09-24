@@ -30,14 +30,14 @@ node <skill>/scripts/hf.mjs check --json --out .hyperframes/check-latest.json
 
 先确认项目根的 `assets/vendor/gsap.min.js` 存在，并且 `index.html` 只从该路径加载 GSAP；本地运行时缺文件与 CDN 下载失败同样会表现为空动效。
 
-**必须核对三件事，缺一不可（包装使用 `--out` 自动核对；未传 `--out` 返回退出码 3 拒绝假装通过）**：
+**必须核对四件事，缺一不可（包装使用 `--out` 自动核对；未传 `--out` 返回退出码 3 拒绝假装通过）**：
 
 | 信号                 | 期望           | 为什么                    |
 | -------------------- | -------------- | ------------------------- |
 | error / warning 计数 | 0 / 0          | 常规                      |
 | `samples.Count`      | **> 0**        | 为 0 = 运行时阶段根本没跑 |
 | `contrast.checked`   | **> 0**        | 为 0 = 对比度审计根本没跑 |
-| `duration`           | **≈ 成片总长** | 为 0 = 它读到的是一张空页 |
+| `duration`           | **≈ `index.html` 根总长**（差值 ≤ 0.1s） | 为 0 或不匹配 = 它读到的是一张空页/错误时间轴 |
 
 **为什么不带 `--no-browser-gpu` 会出问题**：本机取不到真实 GPU 时运行时阶段静默跳过，
 返回 `duration=0 / samples=[] / contrast.checked=0` 却报 ok。
@@ -164,6 +164,7 @@ ffmpeg -y -v error -ss <旁白起点> -t 12 -i renders/<成片>.mp4 -ac 1 -ar 16
 3. ASMR 只会把采样窗的包络抬高 → 造成 **`ambiguous` 假失败**，**不会**造成假 `noise`
    （那需要"持续噪声铺满"）；灰区用上面的 ASR 对稿兜底。
 4. `verify-timeline.mjs` 不受影响：它按 `src` 含 `audio/voice/` 过滤旁白 —— ASMR 只要落在 `.media/audio/asmr/` 就不会被误认。
+5. `gen-index.mjs` 与 `audit-frames.mjs` 都按实际 WAV 时长检查完整 ASMR 区间；只要与任一旁白窗口重叠就阻断，不接受仅检查起点。
 
 > 本机实例：正确入口是 OpenMontage 的 `apps/indextts-bridge/client.py → IndexTTSSession`
 > （`model_version="2.5"`、纯零样本克隆、不传 `emo_vector`）。
@@ -238,7 +239,7 @@ node ..\..\packages\cli\dist\cli.js render . -q looks
 
 同步失败**不报错** —— 元素只是"出现得早了"，画面看着完全正常。
 唯一能抓住它的是"同一帧里取两个靠近的时刻对拍"。完整方法见 [`voice-sync.md`](./voice-sync.md) §6，
-这里只给最小可执行的三步：
+这里只给最小可执行的四步：
 
 ```powershell
 # 1 · 线索命中率与条数（期望 N/N 帧、N/N 条）
@@ -249,9 +250,12 @@ node -e "const j=require('./tools/cue-times.json');for(const k of Object.keys(j)
 
 # 3 · 对拍：线索前 0.5s / 后 0.5s 各一张，看元素是否"只在该出现时才出现"
 node <skill>/scripts/hf.mjs snapshot --at <线索前>,<线索后> --no-end --output .hyperframes/sync-a
+
+# 4 · 自动覆盖所有低命中帧（不只抽固定数量；0.8 是对拍抽样线，align 失败线仍是 0.6）
+node <skill>/scripts/hf.mjs snapshot --pair-low-hit --min-align-hit 0.8
 ```
 
-**通过判据**：① 线索 N/N 命中；② 每帧线索时间单调；③ 对拍快照上元素确实"跟着词出现"。
+**通过判据**：① 线索 N/N 命中且整句/距离门槛通过；② 每帧线索时间单调；③ 固定抽样对拍通过；④ 所有低命中帧都被成对快照覆盖。
 
 ### 9.1 · 成对快照：`--pair`（issues/22 §6 规则 10）
 

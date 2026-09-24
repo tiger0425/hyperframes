@@ -118,6 +118,182 @@ function readSlots(project) {
   return { index: html, slots };
 }
 
+function readWavDuration(path) {
+  try {
+    const b = readFileSync(path);
+    if (
+      b.length < 44 ||
+      b.toString("ascii", 0, 4) !== "RIFF" ||
+      b.toString("ascii", 8, 12) !== "WAVE"
+    ) {
+      return null;
+    }
+    let rate = null;
+    let channels = null;
+    let bits = null;
+    let dataLen = null;
+    let i = 12;
+    while (i + 8 <= b.length) {
+      const id = b.toString("ascii", i, i + 4);
+      const size = b.readUInt32LE(i + 4);
+      if (id === "fmt ") {
+        channels = b.readUInt16LE(i + 10);
+        rate = b.readUInt32LE(i + 12);
+        bits = b.readUInt16LE(i + 22);
+      } else if (id === "data") {
+        dataLen = size;
+        break;
+      }
+      i += 8 + size + (size % 2);
+    }
+    if (!rate || !channels || !bits || dataLen === null) return null;
+    return dataLen / (rate * channels * (bits / 8));
+  } catch {
+    return null;
+  }
+}
+
+function readAudioTags(html) {
+  const rows = [];
+  const live = html.replace(/<!--[\s\S]*?-->/g, "");
+  for (const m of live.matchAll(/<audio\b[^>]*>/g)) {
+    const tag = m[0];
+    const src = tag.match(/src="([^"]+)"/)?.[1];
+    if (!src) continue;
+    rows.push({
+      id: tag.match(/(?:^|\s)id="([^"]+)"/)?.[1] ?? null,
+      src,
+      start: Number(tag.match(/data-start="([\d.]+)"/)?.[1] ?? NaN),
+      duration: Number(tag.match(/data-duration="([\d.]+)"/)?.[1] ?? NaN),
+    });
+  }
+  return rows;
+}
+
+function auditAsmr(project, index, findings) {
+  const path = join(project, "tools", "asmr.json");
+  let entries = [];
+  if (existsSync(path)) {
+    try {
+      entries = JSON.parse(readFileSync(path, "utf8"));
+    } catch (e) {
+      findings.push({
+        level: "error",
+        rule: "asmr_manifest_malformed",
+        file: "tools/asmr.json",
+        message: `不是合法 JSON：${e.message}`,
+        hint: "重跑 gen-index.mjs 生成时间轴",
+      });
+      return;
+    }
+  }
+  if (!Array.isArray(entries)) {
+    findings.push({
+      level: "error",
+      rule: "asmr_manifest_malformed",
+      file: "tools/asmr.json",
+      message: "顶层必须是数组",
+      hint: "每项使用 [slug, at, volume] 形状",
+    });
+    return;
+  }
+
+  const audio = readAudioTags(index);
+  const voiceWindows = audio
+    .filter((a) => /audio\/voice\//.test(a.src))
+    .filter((a) => Number.isFinite(a.start) && Number.isFinite(a.duration) && a.duration > 0)
+    .map((a) => ({ start: a.start, end: a.start + a.duration }));
+  const asmrAudio = audio.filter((a) => /audio\/asmr\//.test(a.src));
+  const matchedTags = new Set();
+  const epsilon = 0.001;
+
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    const label = `asmr-${String(i + 1).padStart(2, "0")}`;
+    if (!Array.isArray(entry) || entry.length < 2 || typeof entry[0] !== "string") {
+      findings.push({
+        level: "error",
+        rule: "asmr_entry_invalid",
+        file: "tools/asmr.json",
+        message: `${label} 不是 [slug, at, volume?] 形状`,
+        hint: "修正清单后重跑 gen-index.mjs",
+      });
+      continue;
+    }
+    const slug = entry[0];
+    const configuredAt = Number(entry[1]);
+    const tag = asmrAudio.find(
+      (a) => a.id === label || new RegExp(`/asmr-${escapeRegExp(slug)}\\.wav$`).test(a.src),
+    );
+    if (!tag) {
+      findings.push({
+        level: "error",
+        rule: "asmr_audio_missing",
+        file: "index.html",
+        message: `${label}（${slug}）没有对应的 ASMR audio`,
+        hint: "重跑 gen-index.mjs",
+      });
+      continue;
+    }
+    matchedTags.add(tag);
+    const at = Number(tag.start);
+    if (
+      !Number.isFinite(configuredAt) ||
+      !Number.isFinite(at) ||
+      Math.abs(configuredAt - at) > 0.001
+    ) {
+      findings.push({
+        level: "error",
+        rule: "asmr_timing_drift",
+        file: "index.html",
+        message: `${label}（${slug}）的清单入点 ${entry[1]} 与 index 入点 ${tag.start} 不一致`,
+        hint: "重跑 gen-index.mjs，不能手改 ASMR 入点",
+      });
+    }
+    const file = join(project, `.media/audio/asmr/asmr-${slug}.wav`);
+    const actualDuration = existsSync(file) ? readWavDuration(file) : null;
+    const duration = actualDuration ?? tag.duration;
+    if (!Number.isFinite(at) || at < 0 || !Number.isFinite(duration) || duration <= 0) {
+      findings.push({
+        level: "error",
+        rule: "asmr_timing_invalid",
+        file: "tools/asmr.json",
+        message: `${label}（${slug}）的入点或时长无效：at=${entry[1]}, duration=${duration}`,
+        hint: "入点必须是非负数，音频时长必须大于 0",
+      });
+      continue;
+    }
+    const end = at + duration;
+    for (const window of voiceWindows) {
+      if (at < window.end - epsilon && end > window.start + epsilon) {
+        findings.push({
+          level: "error",
+          rule: "asmr_voice_overlap",
+          file: "index.html",
+          message: `${label}（${slug}）区间 ${at}~${end}s 与旁白窗口 ${window.start}~${window.end}s 重叠`,
+          hint: "ASMR 必须完整落在槽位余量，不能从静默区延伸进旁白",
+        });
+      }
+    }
+  }
+
+  for (const tag of asmrAudio) {
+    if (!matchedTags.has(tag)) {
+      findings.push({
+        level: "error",
+        rule: "asmr_unlisted_audio",
+        file: "index.html",
+        message: `ASMR 音频 ${tag.id ?? tag.src} 不在 tools/asmr.json 清单中`,
+        hint: "重跑 gen-index.mjs，清单是 ASMR 轨的唯一来源",
+      });
+    }
+  }
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /** 剥掉 <style> 与 <script>，只看可见标记 */
 function visibleMarkup(html) {
   return html
@@ -1173,6 +1349,7 @@ function main() {
         });
       }
     }
+    auditAsmr(project, index, findings);
   }
 
   // ── 产物存在性分档（issues/01）

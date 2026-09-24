@@ -12,9 +12,9 @@
 **不在这里改文案**：文案要改就回阶段③，改完重跑本脚本。
 
 用法：
-    python tools/synthesize_voice.py            # 全量合成 12 条
-    python tools/synthesize_voice.py --frame 03 # 只重跑某一条（NN）
-    python tools/synthesize_voice.py --list     # 只列出解析到的文案与字数，不合成
+    python tools/synthesize_voice.py                 # 全量合成项目帧数
+    python tools/synthesize_voice.py --frame 03      # 只重跑某一条（NN）
+    python tools/synthesize_voice.py --list          # 只列出解析到的文案与字数，不合成
 
 约定（见 CALLING.md，违反会得到杂音 / 女声化 / 中文乱码）：
   统一入口 OpenMontage/apps/indextts-bridge/client.py → IndexTTSSession
@@ -42,6 +42,75 @@ VOICE_REF = Path(r"D:/index-tts/my_voice.wav")
 SEED = 42
 
 SECTION_RE = re.compile(r"^##\s+(\d{2})\s+·\s+(.+?)（`?(voice_\d{3}\.wav)`?）\s*$")
+
+
+def frame_ids_from_frames_data() -> set[str] | None:
+    path = PROJECT / "tools" / "frames-data.mjs"
+    if not path.exists():
+        return None
+    source = path.read_text(encoding="utf-8")
+    nns = re.findall(r"\bnn\s*:\s*[\"'](\d{2})[\"']", source)
+    if nns:
+        unique = set(nns)
+        if len(unique) != len(nns):
+            duplicates = sorted(nn for nn in unique if nns.count(nn) > 1)
+            raise SystemExit(f"[parse] {path} 有重复帧号: {duplicates}")
+        return unique
+    match = re.search(r"export\s+const\s+FRAMES\s*=\s*\[(.*?)\]", source, re.DOTALL)
+    if match:
+        entries = [entry.strip() for entry in match.group(1).split(",") if entry.strip()]
+        ids = []
+        for entry in entries:
+            frame_id = re.fullmatch(r"f?(\d{2})", entry)
+            if frame_id is None:
+                return None
+            ids.append(frame_id.group(1))
+        if len(set(ids)) != len(ids):
+            duplicates = sorted(frame_id for frame_id in set(ids) if ids.count(frame_id) > 1)
+            raise SystemExit(f"[parse] {path} 有重复帧号: {duplicates}")
+        return set(ids)
+    raise SystemExit(f"[parse] {path} 找不到可识别的 FRAMES 数组")
+
+
+def frame_count_from_frames_data() -> int | None:
+    path = PROJECT / "tools" / "frames-data.mjs"
+    if not path.exists():
+        return None
+    frame_ids = frame_ids_from_frames_data()
+    if frame_ids is not None:
+        return len(frame_ids)
+    source = path.read_text(encoding="utf-8")
+    match = re.search(r"export\s+const\s+FRAMES\s*=\s*\[(.*?)\]", source, re.DOTALL)
+    if match:
+        return len([entry for entry in match.group(1).split(",") if entry.strip()])
+    raise SystemExit(f"[parse] {path} 找不到可识别的 FRAMES 数组")
+
+
+def frame_count_from_manifest() -> int | None:
+    if not MANIFEST.exists():
+        return None
+    try:
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"[parse] {MANIFEST} 不是合法 JSON：{exc}") from exc
+    if not isinstance(data, dict):
+        raise SystemExit(f"[parse] {MANIFEST} 顶层必须是对象")
+    lines = data.get("lines")
+    return len(lines) if isinstance(lines, list) else None
+
+
+def expected_frame_count(explicit: int | None = None) -> tuple[int | None, str]:
+    if explicit is not None:
+        if explicit < 1:
+            raise SystemExit("[usage] --expected-frames 必须大于 0")
+        return explicit, "--expected-frames"
+    from_frames = frame_count_from_frames_data()
+    if from_frames is not None:
+        return from_frames, "tools/frames-data.mjs"
+    from_manifest = frame_count_from_manifest()
+    if from_manifest is not None:
+        return from_manifest, ".media/voice-manifest.json"
+    return None, "SCRIPT.md"
 
 
 def load_client():
@@ -76,8 +145,10 @@ def parse_script() -> list[dict]:
     missing = [i["nn"] for i in items if not i["text"]]
     if missing:
         raise SystemExit(f"[parse] 这些小节没解析到 `> ` 锁定稿: {missing}")
-    if len(items) != 12:
-        raise SystemExit(f"[parse] 期望 12 条旁白，实际解析到 {len(items)} 条")
+    frame_ids = [i["nn"] for i in items]
+    duplicates = sorted(frame_id for frame_id in set(frame_ids) if frame_ids.count(frame_id) > 1)
+    if duplicates:
+        raise SystemExit(f"[parse] SCRIPT.md 有重复帧号: {duplicates}")
     return items
 
 
@@ -100,10 +171,30 @@ def wav_format(path: Path) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--frame", default=None, help="只重跑某一条（两位帧号，如 03）")
+    ap.add_argument(
+        "--expected-frames",
+        type=int,
+        default=None,
+        help="显式声明项目帧数；默认从 tools/frames-data.mjs 或清单读取",
+    )
     ap.add_argument("--list", action="store_true", help="只列出解析结果，不合成")
     args = ap.parse_args()
 
     items = parse_script()
+    valid_frames = {item["nn"] for item in items}
+    frames_data_frames = frame_ids_from_frames_data()
+    if frames_data_frames is not None and frames_data_frames != valid_frames:
+        missing_in_data = sorted(valid_frames - frames_data_frames)
+        extra_in_data = sorted(frames_data_frames - valid_frames)
+        raise SystemExit(
+            "[parse] SCRIPT.md 与 tools/frames-data.mjs 帧号集合不一致："
+            f"缺少 {missing_in_data}，多出 {extra_in_data}"
+        )
+    expected, expected_source = expected_frame_count(args.expected_frames)
+    if expected is not None and len(items) != expected:
+        raise SystemExit(
+            f"[parse] 期望 {expected} 条旁白（来源：{expected_source}），实际解析到 {len(items)} 条"
+        )
     if args.frame:
         items = [i for i in items if i["nn"] == args.frame]
         if not items:
@@ -158,9 +249,18 @@ def main() -> int:
     lines = results
     if args.frame and MANIFEST.exists():
         prev = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        by_frame = {r["frame"]: r for r in prev.get("lines", [])}
+        if not isinstance(prev, dict) or not isinstance(prev.get("lines"), list):
+            raise SystemExit(f"[tts] {MANIFEST} 的 lines 必须是数组")
+        by_frame = {
+            r["frame"]: r
+            for r in prev["lines"]
+            if isinstance(r, dict) and r.get("frame") in valid_frames
+        }
         for r in results:
             by_frame[r["frame"]] = r
+        missing = valid_frames - set(by_frame)
+        if missing:
+            raise SystemExit(f"[tts] 清单缺少当前帧 {sorted(missing)}，请先全量合成")
         lines = [by_frame[k] for k in sorted(by_frame)]
         total = sum(r["seconds"] for r in lines)
 

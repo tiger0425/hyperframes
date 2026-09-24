@@ -109,6 +109,12 @@ function readSlots(html) {
   return out.sort((a, b) => a.start - b.start);
 }
 
+function frameNumberFromSlot(slot) {
+  return (
+    slot.cid?.match(/^frame-(\d{2})(?:[-]|$)/)?.[1] ?? slot.id?.match(/^f(\d{2})$/)?.[1] ?? null
+  );
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const project = resolve(args.project);
@@ -337,6 +343,17 @@ function main() {
     }
   }
 
+  for (const slot of liveSlots) {
+    if (frameNumberFromSlot(slot) === null) {
+      add(
+        "error",
+        "slot_frame_number_missing",
+        `槽位 ${slot.cid} 找不到两位真实帧号`,
+        "data-composition-id 应为 frame-NN-slug，不能靠数组位置推断帧号",
+      );
+    }
+  }
+
   const errors = findings.filter((f) => f.level === "error");
   const warnings = findings.filter((f) => f.level === "warning");
   const voiceTotal = Number(voiceRows.reduce((a, r) => a + (r.realDuration ?? 0), 0).toFixed(2));
@@ -350,8 +367,8 @@ function main() {
     declaredTotal: Number.isFinite(declaredTotal) ? declaredTotal : null,
     errors: errors.length,
     warnings: warnings.length,
-    startTable: liveSlots.map((s, i) => ({
-      frame: String(i + 1).padStart(2, "0"),
+    startTable: liveSlots.map((s) => ({
+      frame: frameNumberFromSlot(s),
       cid: s.cid,
       start: s.start,
       duration: s.slot,

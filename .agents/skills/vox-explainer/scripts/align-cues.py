@@ -4,7 +4,7 @@
   1. SCRIPT.md 的每条旁白必须是 `## NN · 角色（voice_00N.wav）` 标题 + 紧随的 `> ` 引用行；
   2. tools/cues.json 的锚短语必须是**该条锁定稿的连续子串**（格式见 voice-sync.md §3）。
   模型选择：中文用 `--model medium`（`small` 会把 QuantScheme 听成 Quant Stream）；
-  纯中文且要快可以 `small`，但要看 `align_hit` 是否掉到 60% 以下。
+  纯中文且要快可以 `small`，但要检查 `align_hit`；默认低于 60% 或映射距离超限即失败。
 
 为什么需要它：本片的要求是「画面元素与动效跟旁白内容同步」，也就是每个元素出现的时间
 必须是旁白真的念到那个词的那一刻，而不是按固定间隔铺。做法：
@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import re
 import sys
@@ -40,6 +41,8 @@ VOICE_DIR = PROJECT / ".media" / "audio" / "voice"
 
 SECTION_RE = re.compile(r"^##\s+(\d{2})\s+·\s+(.+?)（`?(voice_\d{3}\.wav)`?）\s*$")
 KEEP = re.compile(r"[0-9a-z\u4e00-\u9fff]+")
+DEFAULT_MIN_ALIGN_HIT = 0.6
+DEFAULT_MAX_ALIGN_DISTANCE = 3
 
 
 def normalize(s: str) -> str:
@@ -79,8 +82,12 @@ def transcribe(wav: Path, model_name: str):
     return words
 
 
-def align(target: str, words: list[tuple[str, float, float]]):
-    """字符级单调对齐：返回 (target 字符 index -> 时间) 的查询函数与命中率。"""
+def align_with_distance(
+    target: str,
+    words: list[tuple[str, float, float]],
+    max_distance: int = DEFAULT_MAX_ALIGN_DISTANCE,
+):
+    """返回字符时间查询、最近邻距离查询与整句命中率。"""
     asr_chars: list[str] = []
     asr_times: list[float] = []
     for text, start, _end in words:
@@ -98,18 +105,38 @@ def align(target: str, words: list[tuple[str, float, float]]):
             for k in range(i2 - i1):
                 t2a[i1 + k] = j1 + k
 
+    aligned_indices = sorted(t2a)
     hit = len(t2a) / max(1, len(target))
 
-    def time_at(ti: int) -> float | None:
+    def nearest(ti: int) -> tuple[float | None, int | None]:
         if ti in t2a:
-            return asr_times[t2a[ti]]
-        for d in range(1, 400):
-            if ti - d in t2a:
-                return asr_times[t2a[ti - d]]
-            if ti + d in t2a:
-                return asr_times[t2a[ti + d]]
-        return None
+            return asr_times[t2a[ti]], 0
+        pos = bisect.bisect_left(aligned_indices, ti)
+        candidates = []
+        if pos < len(aligned_indices):
+            candidates.append(aligned_indices[pos])
+        if pos > 0:
+            candidates.append(aligned_indices[pos - 1])
+        if not candidates:
+            return None, None
+        nearest_index = min(candidates, key=lambda candidate: (abs(candidate - ti), candidate))
+        return asr_times[t2a[nearest_index]], abs(nearest_index - ti)
 
+    def time_at(ti: int) -> float | None:
+        value, distance = nearest(ti)
+        if value is None or distance is None or distance > max_distance:
+            return None
+        return value
+
+    return time_at, nearest, hit
+
+
+def align(
+    target: str,
+    words: list[tuple[str, float, float]],
+    max_distance: int = DEFAULT_MAX_ALIGN_DISTANCE,
+):
+    time_at, _nearest, hit = align_with_distance(target, words, max_distance)
     return time_at, hit
 
 
@@ -117,8 +144,24 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="small", help="faster-whisper 模型名（默认 small）")
     ap.add_argument("--frame", default=None, help="只重跑某一条（两位帧号）；结果并回 cue-times.json")
+    ap.add_argument(
+        "--min-align-hit",
+        type=float,
+        default=DEFAULT_MIN_ALIGN_HIT,
+        help=f"整句最低命中率（默认 {DEFAULT_MIN_ALIGN_HIT:.0%}）",
+    )
+    ap.add_argument(
+        "--max-align-distance",
+        type=int,
+        default=DEFAULT_MAX_ALIGN_DISTANCE,
+        help=f"锚点允许的最大最近邻字符距离（默认 {DEFAULT_MAX_ALIGN_DISTANCE}）",
+    )
     ap.add_argument("--json", action="store_true", help="只输出 JSON")
     args = ap.parse_args()
+    if not 0 <= args.min_align_hit <= 1:
+        raise SystemExit("[usage] --min-align-hit 必须在 0 到 1 之间")
+    if args.max_align_distance < 0:
+        raise SystemExit("[usage] --max-align-distance 不能小于 0")
 
     script = parse_script()
     cues = json.loads(CUES_JSON.read_text(encoding="utf-8"))
@@ -145,10 +188,15 @@ def main() -> int:
             raise SystemExit(f"[cues] 缺音频 {wav}")
 
         words = transcribe(wav, args.model)
-        time_at, hit = align(norm, words)
+        _time_at, nearest, hit = align_with_distance(norm, words, args.max_align_distance)
         transcript = "".join(w for w, _s, _e in words)
+        if hit < args.min_align_hit:
+            problems.append(
+                f"{key}: 整句 align_hit={hit:.1%} 低于门槛 {args.min_align_hit:.1%}"
+            )
 
         frame_cues = []
+        frame_distances: list[int] = []
         used: set[int] = set()
         for cue in spec["cues"]:
             anchor_norm = normalize(cue["anchor"])
@@ -170,18 +218,29 @@ def main() -> int:
             if idx < 0:
                 problems.append(f"{key}/{cue['id']}: 锚短语不在锁定稿里 -> {cue['anchor']}")
                 continue
-            t = time_at(idx)
-            if t is None:
-                problems.append(f"{key}/{cue['id']}: 对不到时间")
+            t, distance = nearest(idx)
+            if t is None or distance is None or distance > args.max_align_distance:
+                if distance is None:
+                    detail = "没有可用的已对齐字符"
+                else:
+                    detail = f"最近已对齐字符距离 {distance}，超过上限 {args.max_align_distance}"
+                problems.append(f"{key}/{cue['id']}: 对不到可靠时间（{detail}）")
                 continue
             used.add(idx)
+            frame_distances.append(distance)
             frame_cues.append(
                 {
                     "id": cue["id"],
                     "t": round(t, 3),
                     "anchor": cue["anchor"],
                     "element": cue.get("element", ""),
+                    "align_distance": distance,
                 }
+            )
+
+        if len(frame_cues) != len(spec["cues"]):
+            problems.append(
+                f"{key}: 线索命中 {len(frame_cues)}/{len(spec['cues'])}，必须全部命中"
             )
 
         out[key] = {
@@ -191,6 +250,9 @@ def main() -> int:
             "text": text,
             "asr": transcript,
             "align_hit": round(hit, 3),
+            "min_align_hit": round(args.min_align_hit, 3),
+            "max_align_distance": args.max_align_distance,
+            "max_used_align_distance": max(frame_distances, default=0),
             "cues": frame_cues,
         }
         report.append(
@@ -198,10 +260,15 @@ def main() -> int:
             f"末线索 t={max([c['t'] for c in frame_cues], default=0):6.3f}s"
         )
 
-    OUT_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    if not problems:
+        OUT_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
 
     if args.json:
         print(json.dumps(out, ensure_ascii=False, indent=2))
+        if problems:
+            for p in problems:
+                print(f"[align] {p}", file=sys.stderr)
+            return 1
         return 0
 
     print("=== 对齐报告 ===")

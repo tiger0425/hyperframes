@@ -79,7 +79,7 @@ metadata:
 | 运行时阶段静默空跑         | 报 ok，但 `samples=[]` / `contrast.checked=0` / `duration=0` | `hf.mjs` 已固定注入 `--no-browser-gpu`；**仍必须核对这三项计数**              |
 | 环境边界（沙箱禁命名管道） | `check_runtime_failure: spawn EPERM`，exit 1                 | **不是片子的 bug**；换到允许子进程管道的环境重跑。`--no-browser-gpu` 绕过不了 |
 
-**唯一可信的通过条件是四项同时成立**：退出码 0 · `samples.Count > 0` · `contrast.checked > 0` · `duration ≈ 成片总长`。
+**唯一可信的通过条件是四项同时成立**：退出码 0 · `samples.Count > 0` · `contrast.checked > 0` · `duration ≈ index.html 根总长`（包装器容差 0.1s）。
 
 而且 `check` **只是下限**：它的布局/对比度只在固定若干秒点采样（freetoken 267.4s 只采 9 个点），
 采样点之外的问题它抓不到。**每帧至少一张快照 + 人眼**是唯一覆盖手段（`pitfalls.md` §19）。
@@ -128,10 +128,11 @@ node tools/vox/hf.mjs check --json --out .hyperframes/check-latest.json
 #    细分计数也要看：runtime.errors 0（脚本健康）· layout.errorCount 0（定位模型）· contrast.warningCount 0
 
 # 7 · 同步对拍（做了节拍/词级同步就必跑）
-python tools/align-cues.py --model medium                     # 线索 N/N 命中
+python tools/align-cues.py --model medium                     # 线索 N/N、整句命中率与映射距离门槛
 node tools/vox/hf.mjs snapshot --at <线索前>,<线索后> --no-end --output .hyperframes/sync-a
 #    看元素是否"只在该出现时才出现"
-node tools/vox/hf.mjs snapshot --pair --cue <线索名>          # 成对快照 cue ± 0.15s（抽 10 条；判据见 verification.md §9.1）
+node tools/vox/hf.mjs snapshot --pair --cue <线索名>          # 成对快照 cue ± 0.15s（判据见 verification.md §9.1）
+node tools/vox/hf.mjs snapshot --pair-low-hit --min-align-hit 0.8  # 自动覆盖低命中帧
 
 # 8 · 眼睛（不可省）
 node tools/vox/hf.mjs snapshot --at <秒> --no-end --output .hyperframes/snaps-eye

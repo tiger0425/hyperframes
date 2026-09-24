@@ -165,7 +165,7 @@ audience: 首次接触的初学者 # 决定术语纪律的严格程度
 3. `sync-frame-durations.mjs --check` → 全帧 ok（`N/N frames ok`，N = 该项目帧数）。
 4. `hf.mjs lint --json` → `ok=true`，**0 error / 0 warning**。
 5. `hf.mjs check --json --out .hyperframes/check-latest.json` → **退出码 0（自验证通过）**：
-   **0 error / 0 warning，且 `samples.length > 0`、`contrast.checked > 0`、`duration > 0`**。
+   **0 error / 0 warning，且 `samples.length > 0`、`contrast.checked > 0`、`duration` 与 `index.html` 根总长相差不超过 0.1 秒**。
    不传 `--out` 时包装按契约返回**退出码 3（未自检）**，脚本/CI 不得判为通过；不带
    `--no-browser-gpu`（包装已固定注入）时它会静默空跑却报 ok（`pitfalls.md` §1）。
 6. 关键秒点快照用 `read_image` 亲眼看过（不是只看 JSON）。
